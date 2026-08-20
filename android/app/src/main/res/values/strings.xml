@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">دنیای کوچیک ما</string>
+    <string name="app_name_english">Couple OS</string>
+    <string name="app_tagline">دنیای کوچیک دوتایی ما ❤️</string>
+
+    <!-- Setup -->
+    <string name="setup_title">این دنیای کوچیک فقط برای ما دوتاست</string>
+    <string name="setup_who_are_you">تو کدومی؟</string>
+    <string name="setup_enter_your_token">توکن مخصوص خودت رو وارد کن</string>
+    <string name="setup_enter_partner_token">توکن پارتنرت رو وارد کن</string>
+    <string name="setup_personal_token">توکن شخصی</string>
+    <string name="setup_partner_token">توکن پارتنر</string>
+    <string name="setup_validate">تأیید</string>
+    <string name="setup_validating">در حال بررسی…</string>
+    <string name="setup_pairing">در حال اتصال…</string>
+    <string name="setup_paired">اتصال برقرار شد ❤️</string>
+    <string name="setup_invalid_token">توکن نامعتبر</string>
+
+    <!-- Lock -->
+    <string name="lock_title">قفل ورود</string>
+    <string name="lock_setup_title">برای ورود به دنیای کوچیک ما یک قفل انتخاب کن</string>
+    <string name="lock_enter_pin">PIN خودت رو وارد کن</string>
+    <string name="lock_confirm_pin">PIN رو تأیید کن</string>
+    <string name="lock_biometric">ورود با اثر انگشت</string>
+    <string name="lock_incorrect">رمز اشتباه</string>
+    <string name="lock_unlock">باز کردن</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">خانه</string>
+    <string name="nav_chat">چت</string>
+    <string name="nav_memories">خاطرات</string>
+    <string name="nav_calendar">تقویم</string>
+    <string name="nav_more">بیشتر</string>
+
+    <!-- Dashboard -->
+    <string name="dashboard_greeting">سلام %1$s ❤️</string>
+    <string name="dashboard_today_mood">حال امروزت</string>
+    <string name="dashboard_partner_mood">حال پارتنرت</string>
+    <string name="dashboard_partner_needs_you">شاید الان بیشتر بهت نیاز داشته باشه ❤️</string>
+    <string name="dashboard_days_together">روز با هم</string>
+    <string name="dashboard_next_event">رویداد بعدی</string>
+    <string name="dashboard_latest_memory">آخرین خاطره</string>
+    <string name="dashboard_daily_question">سؤال امروز</string>
+    <string name="dashboard_tasks">کارها</string>
+    <string name="dashboard_no_mood">هنوز حالتت رو ثبت نکردی</string>
+
+    <!-- Mood -->
+    <string name="mood_title">حال امروز</string>
+    <string name="mood_how_are_you">امروز چطوری؟</string>
+    <string name="mood_great">عالی</string>
+    <string name="mood_in_love">عاشق</string>
+    <string name="mood_good">خوب</string>
+    <string name="mood_normal">معمولی</string>
+    <string name="mood_neutral">خنثی</string>
+    <string name="mood_sad">ناراحت</string>
+    <string name="mood_very_sad">خیلی بد</string>
+    <string name="mood_angry">عصبانی</string>
+    <string name="mood_tired">خسته</string>
+    <string name="mood_energy">انرژی</string>
+    <string name="mood_stress">استرس</string>
+    <string name="mood_sleep">خواب</string>
+    <string name="mood_love_level">سطح عشق</string>
+    <string name="mood_social_battery">باتری اجتماعی</string>
+
+    <!-- Memories -->
+    <string name="memories_title">خاطرات تصویری ما</string>
+    <string name="memories_empty">هنوز خاطره‌ای ثبت نکردید ❤️</string>
+    <string name="memories_empty_action">اولین خاطره‌تون رو ثبت کنید</string>
+    <string name="memories_add">خاطره جدید</string>
+    <string name="memories_vault">صندوقچه خاطرات</string>
+
+    <!-- Chat -->
+    <string name="chat_title">چت</string>
+    <string name="chat_empty">هنوز پیامی ندارید ❤️</string>
+    <string name="chat_type_message">پیام بنویس…</string>
+    <string name="chat_typing">در حال نوشتن…</string>
+
+    <!-- Calendar -->
+    <string name="calendar_title">تقویم ما</string>
+    <string name="calendar_add_event">رویداد جدید</string>
+    <string name="calendar_no_events">رویدادی برای امروز نیست</string>
+
+    <!-- Journal -->
+    <string name="journal_title">دفتر خاطرات</string>
+    <string name="journal_empty">هنوز یادداشتی ننوشتید ❤️</string>
+    <string name="journal_new">یادداشت جدید</string>
+
+    <!-- More -->
+    <string name="more_profile">پروفایل</string>
+    <string name="more_our_story">داستان ما</string>
+    <string name="more_wishlist">لیست آرزوها</string>
+    <string name="more_bucket_list">لیست خواسته‌ها</string>
+    <string name="more_date_planner">برنامه قرار</string>
+    <string name="more_love_letters">نامه‌های عاشقانه</string>
+    <string name="more_surprises">سورپرایزها</string>
+    <string name="more_relationship">رابطه ما</string>
+    <string name="more_ai">دستیار هوشمند</string>
+    <string name="more_photos">عکس‌ها</string>
+    <string name="more_settings">تنظیمات</string>
+    <string name="more_countdown">شمارش معکوس</string>
+    <string name="more_tasks">کارها</string>
+    <string name="more_expenses">هزینه‌ها</string>
+    <string name="more_questions">سؤال روزانه</string>
+
+    <!-- Settings -->
+    <string name="settings_title">تنظیمات</string>
+    <string name="settings_profile">پروفایل</string>
+    <string name="settings_couple">پارتنر</string>
+    <string name="settings_security">امنیت</string>
+    <string name="settings_privacy">حریم خصوصی</string>
+    <string name="settings_notifications">اعلان‌ها</string>
+    <string name="settings_storage">فضای ذخیره‌سازی</string>
+    <string name="settings_google_drive">Google Drive</string>
+    <string name="settings_backup">پشتیبان‌گیری</string>
+    <string name="settings_devices">دستگاه‌ها</string>
+    <string name="settings_app_lock">قفل اپ</string>
+    <string name="settings_language">زبان</string>
+    <string name="settings_theme">تم</string>
+    <string name="settings_export">خروجی اطلاعات</string>
+    <string name="settings_delete">حذف اطلاعات</string>
+    <string name="settings_unpair">قطع اتصال</string>
+
+    <!-- Common -->
+    <string name="save">ذخیره</string>
+    <string name="cancel">انصراف</string>
+    <string name="delete">حذف</string>
+    <string name="edit">ویرایش</string>
+    <string name="share">اشتراک‌گذاری</string>
+    <string name="retry">تلاش مجدد</string>
+    <string name="loading">در حال بارگذاری…</string>
+    <string name="error_generic">مشکلی پیش آمد</string>
+    <string name="error_network">اینترنت متصل نیست</string>
+    <string name="coming_soon">به زودی</string>
+    <string name="private_label">خصوصی</string>
+    <string name="shared_label">مشترک</string>
+    <string name="quick_lock">قفل سریع</string>
+</resources>

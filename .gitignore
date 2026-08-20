@@ -1,0 +1,58 @@
+# ── Environment & Secrets ─────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Android ──────────────────────────────────────────────
+*.keystore
+*.jks
+keystore.properties
+local.properties
+android/app/build/
+android/build/
+android/.gradle/
+android/app/release/
+android/captures/
+
+# ── Node/Backend ─────────────────────────────────────────
+node_modules/
+backend/dist/
+backend/.env
+
+# ── Build Artifacts ──────────────────────────────────────
+/build/
+*.apk
+*.aab
+releases/android/debug/*.apk
+releases/android/release/*.apk
+releases/android/release/*.aab
+
+# ── IDE ──────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# ── OS ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+
+# ── Secrets & Credentials ────────────────────────────────
+secret*
+credentials*
+*.pem
+*.key
+service-account*.json
+google-services.json
+
+# ── Testing ──────────────────────────────────────────────
+coverage/
+.nyc_output/
+
+# ── Cache ────────────────────────────────────────────────
+.cache/
+.gradle/
+# Workflows need manual push with workflow permission
+.github/workflows/
