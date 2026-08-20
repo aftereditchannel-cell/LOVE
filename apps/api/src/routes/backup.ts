@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireAuth, requireCouple } from '../middleware/auth';
 import { asyncH, err, ok } from '../lib/http';
 import { parse } from '../lib/validate';
-import { runBackup, listVersions, restoreVersion, backupStatus } from '../services/backup';
+import { runBackup, listVersions, restoreVersion, backupStatus, setGistToken, clearGistToken } from '../services/backup';
 import { rateLimit } from '../middleware/rateLimit';
 import { audit } from '../middleware/audit';
 import { getDb, now } from '../db';
@@ -45,6 +45,22 @@ backupRouter.post('/restore', requireAuth, requireCouple, backupLimiter, asyncH(
   const result = await restoreVersion(req.coupleId!, version);
   await audit(req, 'backup.restore', { version });
   ok(res, result);
+}));
+
+// PUT /api/backup/token {token} — save a user-entered Gist token (verified, then stored ENCRYPTED server-side)
+const tokenLimiter = rateLimit('backup-token', 20, 60 * 60_000);
+backupRouter.put('/token', requireAuth, requireCouple, tokenLimiter, asyncH(async (req, res) => {
+  const { token } = parse(z.object({ token: z.string().min(1).max(255) }), req.body);
+  const result = await setGistToken(req.coupleId!, token);
+  await audit(req, 'backup.token.set', { login: result.login }); // token value is never audited/echoed
+  ok(res, { saved: true, login: result.login, tokenHint: `••••${result.last4}` });
+}));
+
+// DELETE /api/backup/token — remove the couple-scoped token
+backupRouter.delete('/token', requireAuth, requireCouple, tokenLimiter, asyncH(async (req, res) => {
+  await clearGistToken(req.coupleId!);
+  await audit(req, 'backup.token.cleared');
+  ok(res, { removed: true });
 }));
 
 // PATCH /api/backup/settings {autoBackup}

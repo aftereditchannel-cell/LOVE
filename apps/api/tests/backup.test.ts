@@ -2,13 +2,14 @@ import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 // In-memory Gist store — GitHub API is never called in tests.
 const gistStore = new Map<string, Record<string, string>>();
+const verifyBehavior: { mode: 'ok' | 'auth' | 'scope'; login: string } = { mode: 'ok', login: 'test-gh-user' };
 vi.mock('../src/services/gistClient', () => ({
-  createGist: vi.fn(async (files: Record<string, { content: string }>) => {
+  createGist: vi.fn(async (_token: string, files: Record<string, { content: string }>) => {
     const id = 'gist-test-1';
     gistStore.set(id, Object.fromEntries(Object.entries(files).map(([k, v]) => [k, v.content])));
     return { id, files: {} };
   }),
-  updateGist: vi.fn(async (id: string, files: Record<string, { content: string } | null>) => {
+  updateGist: vi.fn(async (_token: string, id: string, files: Record<string, { content: string } | null>) => {
     const g = gistStore.get(id) ?? {};
     for (const [k, v] of Object.entries(files)) {
       if (v === null) delete g[k]; else g[k] = v.content;
@@ -16,10 +17,23 @@ vi.mock('../src/services/gistClient', () => ({
     gistStore.set(id, g);
     return { id, files: {} };
   }),
-  getGist: vi.fn(async (id: string) => ({
+  getGist: vi.fn(async (_token: string, id: string) => ({
     id,
     files: Object.fromEntries(Object.entries(gistStore.get(id) ?? {}).map(([k, content]) => [k, { content }])),
   })),
+  looksLikeGithubToken: (t: string) => {
+    const s = t.trim();
+    return s.length >= 30 && s.length <= 255 && /^[A-Za-z0-9_]+$/.test(s);
+  },
+  verifyToken: vi.fn(async () => {
+    if (verifyBehavior.mode === 'auth') {
+      throw Object.assign(new Error('توکن GitHub نامعتبر یا مسدود است؛ یک توکن تازه با scope فقط gist بساز.'), { status: 422, code: 'GITHUB_AUTH' });
+    }
+    if (verifyBehavior.mode === 'scope') {
+      throw Object.assign(new Error('این توکن scope موردنیاز gist را ندارد؛ هنگام ساخت، فقط تیک gist را بزن.'), { status: 422, code: 'GITHUB_SCOPE' });
+    }
+    return { login: verifyBehavior.login, scopes: ['gist'] };
+  }),
 }));
 
 import { createApp } from '../src/app';
@@ -101,8 +115,97 @@ describe('encrypted versioned backup', () => {
   });
 });
 
-describe.skip('unconfigured token path', () => {
-  it('skips gracefully', async () => {
-    // covered implicitly by status endpoint in smoke tests
+describe('user-entered Gist token (Settings → Backup)', () => {
+  const FAKE_TOKEN = 'ghp_' + 'Ab3dEf5Hi7Jk9Lm1No3Pq5Rs7Tu9Vw5Xy7Z1';
+
+  it('saves a verified token ENCRYPTED; status reports only a masked hint', async () => {
+    const me = await registerUser(app, 'tk-a@test.local', 'TK');
+    const { coupleId } = await makeCouple(me, 'tk-b@test.local');
+    verifyBehavior.mode = 'ok';
+
+    const res = await me.call('PUT', '/api/backup/token', { token: FAKE_TOKEN });
+    expect(res.status).toBe(200);
+    expect(res.json.data.saved).toBe(true);
+    expect(res.json.data.login).toBe('test-gh-user');
+    expect(JSON.stringify(res.json)).not.toContain(FAKE_TOKEN); // never echoed
+
+    const db = await getDb();
+    const row = await db.get('SELECT gist_token_enc FROM couples WHERE id = ?', [coupleId]);
+    expect(row.gist_token_enc).toBeTruthy();
+    expect(row.gist_token_enc).not.toContain(FAKE_TOKEN);          // stored ciphertext only
+    expect(row.gist_token_enc).toContain('"iv"');                  // AES-GCM envelope
+
+    const status = await me.get('/api/backup/status');
+    expect(status.json.data.tokenSource).toBe('site');
+    expect(status.json.data.tokenHint).toBe('••••' + FAKE_TOKEN.slice(-4));
+    expect(JSON.stringify(status.json)).not.toContain(FAKE_TOKEN);
+  });
+
+  it('backup with site token still produces ciphertext-only gist content (token never inside)', async () => {
+    const db = await getDb();
+    const me = await registerUser(app, 'tk-c@test.local', 'TK2');
+    const { coupleId } = await makeCouple(me, 'tk-d@test.local');
+    verifyBehavior.mode = 'ok';
+    await me.call('PUT', '/api/backup/token', { token: FAKE_TOKEN });
+    const r = await runBackup(coupleId, 'manual');
+    expect(r.status).toBe('success');
+    const all = [...gistStore.values()].flatMap((g) => Object.values(g)).join('\n');
+    expect(all).not.toContain(FAKE_TOKEN);
+    // token was resolved+decrypted internally (resolveGistToken returns it for gist calls)
+    const { resolveGistToken } = await import('../src/services/backup');
+    const couple = await db.get('SELECT * FROM couples WHERE id = ?', [coupleId]);
+    const auth = resolveGistToken(couple);
+    expect(auth.source).toBe('site');
+    expect(auth.token).toBe(FAKE_TOKEN);
+  });
+
+  it('rejects tokens GitHub rejects (nothing stored)', async () => {
+    const me = await registerUser(app, 'tk-e@test.local', 'TK3');
+    const { coupleId } = await makeCouple(me, 'tk-f@test.local');
+    verifyBehavior.mode = 'scope';
+    const bad = await me.call('PUT', '/api/backup/token', { token: FAKE_TOKEN });
+    expect(bad.status).toBe(422);
+    expect(bad.json.error.code).toBe('GITHUB_SCOPE');
+    const db = await getDb();
+    const row = await db.get('SELECT gist_token_enc FROM couples WHERE id = ?', [coupleId]);
+    expect(row.gist_token_enc).toBeNull();
+    verifyBehavior.mode = 'ok';
+  });
+
+  it('rejects malformed tokens without any network call', async () => {
+    const me = await registerUser(app, 'tk-g@test.local', 'TK4');
+    await makeCouple(me, 'tk-h@test.local');
+    // passes zod length, fails the token-shape check (spaces + symbols are impossible in PATs)
+    const bad = await me.call('PUT', '/api/backup/token', { token: 'not a real github token at all !!' });
+    expect(bad.status).toBe(422);
+    expect(bad.json.error.code).toBe('TOKEN_FORMAT');
+  });
+
+  it('clearing removes the site token (env fallback reported again)', async () => {
+    const me = await registerUser(app, 'tk-i@test.local', 'TK5');
+    await makeCouple(me, 'tk-j@test.local');
+    verifyBehavior.mode = 'ok';
+    await me.call('PUT', '/api/backup/token', { token: FAKE_TOKEN });
+    const del = await me.del('/api/backup/token');
+    expect(del.status).toBe(200);
+    const status = await me.get('/api/backup/status');
+    expect(status.json.data.tokenSource).toBe('env'); // test env provides COUPLE_OS_GITHUB_TOKEN
+  });
+
+  it('token is not readable by the other couple (isolation)', async () => {
+    const me = await registerUser(app, 'tk-k@test.local', 'TK6');
+    await makeCouple(me, 'tk-l@test.local');
+    verifyBehavior.mode = 'ok';
+    await me.call('PUT', '/api/backup/token', { token: FAKE_TOKEN });
+
+    const other = await registerUser(app, 'tk-m@test.local', 'TK7');
+    await makeCouple(other, 'tk-n@test.local');
+    const st = await other.get('/api/backup/status');
+    expect(st.json.data.tokenSource).toBe('env');
+    expect(st.json.data.tokenHint).toBeNull();
+    expect(JSON.stringify(st.json)).not.toContain(FAKE_TOKEN);
+
+    const exp = await me.get('/api/export');
+    expect(JSON.stringify(exp.json)).not.toContain(FAKE_TOKEN); // GDPR export excludes token
   });
 });

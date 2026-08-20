@@ -89,10 +89,10 @@ scripts/        setup.mjs / dev.mjs
 ## ☁️ راه‌اندازی بکاپ GitHub Gist
 
 1. توکن قدیمی/افشاشده را **Revoke** کن (مهم!).
-2. روی https://github.com/settings/tokens → **Generate new token (classic)** بزن.
+2. روی https://github.com/settings/tokens → **Generate new token (classic)** بزن (توکن‌های Fine-grained به Gist دسترسی ندارند).
 3. **فقط scope = `gist`** بده (دسترسی بیشتر لازم نیست).
-4. در `apps/api/.env` بگذار: `COUPLE_OS_GITHUB_TOKEN="ghp_..."` و سرور را ری‌استارت کن.
-5. از صفحه‌ی **تنظیمات → بکاپ** دکمه‌ی «بکاپ دستی» را بزن یا «بکاپ خودکار» را روشن کن.
+4. توکن را **از داخل خود اپ** وارد کن: **تنظیمات → بکاپ → «توکن گیت‌هاب»** — توکن اول با GitHub اعتبارسنجی می‌شود، بعد **رمزنگاری‌شده (AES-256-GCM)** در دیتابیس سرور (`couples.gist_token_enc`) ذخیره می‌شود و هرگز دوباره نمایش/عودت داده نمی‌شود، در بکاپ و Export هم نمی‌آید. (روش جایگزین برای کل سرور: `COUPLE_OS_GITHUB_TOKEN="ghp_..."` در `apps/api/.env` — اگر کاربر توکن سایت ذخیره کرده باشد، همان اولویت دارد.)
+5. از همان صفحه دکمه‌ی «بکاپ دستی» را بزن یا «بکاپ خودکار» را روشن کن؛ اولین بکاپ یک Secret Gist می‌سازد و `gist_id` در دیتابیس ذخیره می‌شود.
 
 جریان داده:
 
@@ -157,7 +157,7 @@ DATABASE_URL="postgresql://couple:pass@localhost:5432/coupleos" npm run start -w
 ## ✅ چک‌لیست قابلیت‌ها
 
 **کامل و کاربردی (تست‌شده):**
-احراز هویت کامل (ثبت‌نام/ورود/خروج/Refresh/Reset رمز/تأیید ایمیل/2FA TOTP/مدیریت نشست‌ها) • Onboarding ساخت فضای دونفره با کد دعوت • Dashboard با چک‌این حال • سیستم Mood کامل (۹ حال + ۵ شاخص + آرزوی حمایت + نمودار دونفره) • چت خصوصی (متن/فایل/Reply/Reaction/Pin/Edit/Delete/Typing/Seen) • Journal رمزنگاری‌شده با دید private/shared • Memories با Grid/Timeline/Polaroid + مدیا • Photos + Albums + Favorites • تقویم دونفره ماهانه • Countdown • Wishlist • Bucket List با Progress • Tasks با Assign/Priority • Expenses با محاسبه‌ی بدهی • Love Letters با مُهر زمانی • سؤال روزانه با قانون «تا جواب ندی، جوابش فاش نمی‌شه» • زبان عشق + پیشنهاد عمل • Relationship Health (۶ محور + روند) • قدردانی/تعریف • داستان ما (۷ فصل) • Period/PMS Tracker خصوصی، رمزنگاری‌شده با پیش‌بینی تقریبی (**بدون ادعای پزشکی**) • دستیار دونفره (سروور-ساید، بدون سرویس خارجی، **بدون ادعای درمانی**) • Notification Center + یادآوری‌های زنده (تولد/سالگرد/PMS/…) • جستجوی سراسری • Export کامل JSON • Privacy/Security Center • بکاپ Gist نسخه‌دار رمزنگاری‌شده + بازیابی + تاریخچه • صف آفلاین (Outbox) + PWA + SW • RTL فارسی کامل + تم dark/light/system • Empty Stateها و Toastهای فارسی • Responsive واقعی (BottomNav موبایل / Sidebar دسکتاپ / FAB) • ۲۴ تست خودکار سبز.
+احراز هویت کامل (ثبت‌نام/ورود/خروج/Refresh/Reset رمز/تأیید ایمیل/2FA TOTP/مدیریت نشست‌ها) • Onboarding ساخت فضای دونفره با کد دعوت • Dashboard با چک‌این حال • سیستم Mood کامل (۹ حال + ۵ شاخص + آرزوی حمایت + نمودار دونفره) • چت خصوصی (متن/فایل/Reply/Reaction/Pin/Edit/Delete/Typing/Seen) • Journal رمزنگاری‌شده با دید private/shared • Memories با Grid/Timeline/Polaroid + مدیا • Photos + Albums + Favorites • تقویم دونفره ماهانه • Countdown • Wishlist • Bucket List با Progress • Tasks با Assign/Priority • Expenses با محاسبه‌ی بدهی • Love Letters با مُهر زمانی • سؤال روزانه با قانون «تا جواب ندی، جوابش فاش نمی‌شه» • زبان عشق + پیشنهاد عمل • Relationship Health (۶ محور + روند) • قدردانی/تعریف • داستان ما (۷ فصل) • Period/PMS Tracker خصوصی، رمزنگاری‌شده با پیش‌بینی تقریبی (**بدون ادعای پزشکی**) • دستیار دونفره (سروور-ساید، بدون سرویس خارجی، **بدون ادعای درمانی**) • Notification Center + یادآوری‌های زنده (تولد/سالگرد/PMS/…) • جستجوی سراسری • Export کامل JSON • Privacy/Security Center • بکاپ Gist نسخه‌دار رمزنگاری‌شده + بازیابی + تاریخچه (توکن از داخل سایت و با اعتبارسنجی ذخیره می‌شود) • صف آفلاین (Outbox) + PWA + SW • RTL فارسی کامل + تم dark/light/system • Empty Stateها و Toastهای فارسی • Responsive واقعی (BottomNav موبایل / Sidebar دسکتاپ / FAB) • ۳۰ تست خودکار سبز.
 
 **نیازمند تنظیم Environment (کد آماده است، فقط ENV می‌خواهد):**
 1. `COUPLE_OS_GITHUB_TOKEN` → فعال‌شدن بکاپ واقعی روی Gist.

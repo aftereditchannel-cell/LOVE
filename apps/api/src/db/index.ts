@@ -49,6 +49,11 @@ async function createSqliteDb(url: string): Promise<Db> {
   const sdb = new DatabaseSync(file);
   sdb.exec(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
   sdb.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  // Idempotent column migrations (for DBs created before a column existed)
+  const migrations = [
+    'ALTER TABLE couples ADD COLUMN gist_token_enc TEXT',
+  ];
+  for (const m of migrations) { try { sdb.exec(m); } catch { /* column already exists */ } }
   let inTx = false;
   const db: Db = {
     async all(sql, params = []) { return sdb.prepare(sql).all(...params) as any[]; },
@@ -75,6 +80,7 @@ async function createPgDb(url: string): Promise<Db> {
   const pool = new Pool({ connectionString: url, max: 10 });
   const schema = makePgSchema(fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8'));
   await pool.query(schema);
+  try { await pool.query('ALTER TABLE couples ADD COLUMN IF NOT EXISTS gist_token_enc TEXT'); } catch { /* noop */ }
   const wrapErr = (e: any): never => {
     // surface PG unique violations in a sqlite-compatible way
     if (e && e.code === '23505') { const err: any = new Error('UNIQUE constraint failed'); err.code = 'SQLITE_CONSTRAINT_UNIQUE'; throw err; }

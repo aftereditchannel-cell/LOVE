@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS couples (
   start_date TEXT,
   invite_code TEXT UNIQUE,
   gist_id TEXT,
+  gist_token_enc TEXT,
   pending_partner TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
