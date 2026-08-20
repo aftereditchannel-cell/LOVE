@@ -1,4 +1,32 @@
-# ساخت Android (APK / AAB) با Tauri v2
+# ساخت Android (APK / AAB)
+
+## روش ۱ — APK فوری بدون Android SDK (همان چیزی که در مخزن بیلد می‌شود)
+
+مسیر سبک و مستقل از گوگل/Gradle که در همین ریپو خودکار شده: یک شل نیتیو WebView
+(`apps/apk/src/.../MainActivity.java`) که وب‌اپ را بالا می‌آورد؛ با Toolchainی که
+فقط از npm و PyPI گرفته می‌شود (بدون dl.google.com):
+
+```bash
+npm run build:apk
+# خروجی: release/CoupleOS-<version>-debug.apk  (امضای v1/v2/v3 با کلید debug)
+```
+
+ابزارها (در اولین اجرا دانلود و در `apps/apk/.toolchain` کش می‌شوند — gitignored):
+aapt2 (از پکیج npm aaptjs3)، android.jar / ECJ / D8 / apksigner / debug.keystore
+(از پکیج npm ‎@drxiaozhi/minapk، پوشه‌ی tools)، و ران‌تایم جاوا (از ویل PyPI jdk4py
+= Temurin JRE). گام‌ها: کامپایل ریسورس → لینک → ECJ → D8 → تزریق classes.dex → امضا.
+
+آدرس وب‌اپ با env قابل‌تغییر است (بدون کامپایل مجدد جاوا — داخل assets/config.txt می‌نشیند):
+
+```bash
+COUPLE_OS_APK_URL="https://your-domain.example" npm run build:apk
+```
+
+> نکته: این APK «پوسته‌ی وب‌به‌نیتیو» است و برای استفاده‌ی واقعی به یک بک‌اند دیپلوی‌شده
+> نیاز دارد. برای انتشار فروشگاهی (AAB، کلید release، آفلاین‌باندل) روش ۲ پیشنهاد می‌شود.
+> نصب روی گوشی: فایل را باز کن و «Install unknown apps» را اجازه بده (کلید debug).
+
+## روش ۲ — ساخت فروشگاهی با Tauri v2 (APK / AAB)
 
 ## چرا Tauri؟
 - **یک کدبیس واقعی**: همان React/TS فرانت‌اند + همان Backend؛ بدون بازنویسی.

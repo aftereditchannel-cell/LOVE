@@ -164,7 +164,7 @@ DATABASE_URL="postgresql://couple:pass@localhost:5432/coupleos" npm run start -w
 2. `MAIL_*` → ارسال واقعی ایمیل (بدون آن لینک‌ها در لاگ سرور چاپ می‌شوند).
 3. `STORAGE_*` → آپلود روی S3 در Production (پیش‌فرض dev دیسک محلی است).
 4. `DATABASE_URL=postgresql://…` → سوئیچ به Postgres برای Production.
-5. بیلد APK/EXE → پیش‌نیازهای `docs/android.md` / `docs/windows.md` (Rust/SDK) — روی دستگاه خودت.
+5. بیلد APK/EXE → **APK سبک بدون SDK**: `npm run build:apk` (خودکار ابزارها را از npm/PyPI می‌آورد؛ خروجی: `release/CoupleOS-*-debug.apk` — با `COUPLE_OS_APK_URL` آدرس وب‌اپ را تغییر بده). بیلد فروشگاهی (AAB/کلید release) → `docs/android.md` / `docs/windows.md`.
 
 **نکته‌ی سلامت:** بخش‌های Period/PMS و Relationship صرفاً ابزار پیگیری/خودارزیابی‌اند و هیچ‌گونه ادعای تشخیص پزشکی یا روان‌شناختی ندارند.
 

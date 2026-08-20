@@ -13,7 +13,8 @@
     "dev:web": "npm run dev -w couple-os-web",
     "build": "npm run build -w couple-os-api && npm run build -w couple-os-web",
     "test": "npm run test -w couple-os-api",
-    "seed": "npm run seed -w couple-os-api"
+    "seed": "npm run seed -w couple-os-api",
+    "build:apk": "node scripts/build-apk.mjs"
   },
   "engines": {
     "node": ">=20"
