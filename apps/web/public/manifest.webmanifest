@@ -1,0 +1,17 @@
+{
+  "name": "Couple OS — دنیای کوچیک دوتایی ما",
+  "short_name": "Couple OS",
+  "description": "Private digital home for two — خاطرات، برنامه‌ها و لحظه‌های ما یک جا",
+  "lang": "fa",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0b10",
+  "theme_color": "#0b0b10",
+  "icons": [
+    { "src": "/assets/brand/logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
