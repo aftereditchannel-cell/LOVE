@@ -1,14 +1,17 @@
 package com.coupleos.app.ui.bucket
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
@@ -118,12 +121,23 @@ fun BucketListScreen(onBack: () -> Unit, viewModel: BucketListViewModel = hiltVi
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
             if (items.isNotEmpty()) {
-                LinearProgressIndicator(
-                    progress = { if (items.isEmpty()) 0f else done.toFloat() / items.size },
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
-                    color = Primary,
-                    trackColor = DividerColor,
-                )
+                val progress = if (items.isEmpty()) 0f else done.toFloat() / items.size
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 10.dp)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(DividerColor),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Primary),
+                    )
+                }
             }
             if (items.isEmpty()) {
                 EmptyState("🎯", "لیست خواسته‌ها خالیه", "کارهایی که می‌خواید با هم انجام بدید رو بنویسید")
