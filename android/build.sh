@@ -63,6 +63,12 @@ if [ ! -f "coupleos-release.keystore" ]; then
     echo "✓ Release keystore generated"
 fi
 
+# Ensure gradle wrapper JAR exists
+if [ ! -f "gradle/wrapper/gradle-wrapper.jar" ]; then
+    echo "Setting up Gradle wrapper..."
+    ./setup-wrapper.sh
+fi
+
 # Make gradlew executable
 chmod +x gradlew
 
