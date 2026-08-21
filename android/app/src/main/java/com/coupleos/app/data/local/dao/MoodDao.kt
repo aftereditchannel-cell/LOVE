@@ -32,4 +32,14 @@ interface MoodDao {
 
     @Query("UPDATE moods SET isSynced = 1 WHERE id = :id")
     suspend fun markSynced(id: String)
+
+    @Query("SELECT * FROM moods")
+    suspend fun getAllOnce(): List<MoodEntity>
+
+    @Query("SELECT * FROM moods ORDER BY date DESC")
+    fun observeAll(): Flow<List<MoodEntity>>
+
+    @Query("UPDATE moods SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }

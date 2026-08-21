@@ -32,4 +32,11 @@ interface JournalDao {
 
     @Query("UPDATE journal_entries SET isSynced = 1 WHERE id = :id")
     suspend fun markSynced(id: String)
+
+    @Query("SELECT * FROM journal_entries")
+    suspend fun getAllOnce(): List<JournalEntity>
+
+    @Query("UPDATE journal_entries SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }

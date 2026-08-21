@@ -38,4 +38,18 @@ interface MessageDao {
 
     @Query("UPDATE messages SET isSynced = 1 WHERE id = :id")
     suspend fun markSynced(id: String)
+
+    @Query("SELECT * FROM messages")
+    suspend fun getAllOnce(): List<MessageEntity>
+
+    @Query("UPDATE messages SET isSynced = 1")
+    suspend fun markAllSynced()
+
+    /**
+     * Every message from BOTH partners. After a sync the partner's rows carry
+     * their own coupleId, so filtering by the local coupleId would hide them.
+     */
+    @Query("SELECT * FROM messages WHERE isDeleted = 0 ORDER BY createdAt DESC")
+    fun observeAllMessages(): Flow<List<MessageEntity>>
+
 }

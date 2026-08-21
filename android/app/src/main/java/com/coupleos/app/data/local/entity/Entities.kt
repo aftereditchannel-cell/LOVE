@@ -1,8 +1,10 @@
 package com.coupleos.app.data.local.entity
 
 import androidx.room.*
+import kotlinx.serialization.Serializable
 
 @Entity(tableName = "users")
+@Serializable
 data class UserEntity(
     @PrimaryKey val id: String,
     val role: String,
@@ -20,6 +22,7 @@ data class UserEntity(
 )
 
 @Entity(tableName = "couples")
+@Serializable
 data class CoupleEntity(
     @PrimaryKey val id: String,
     val name: String = "",
@@ -38,6 +41,7 @@ data class CoupleEntity(
 )
 
 @Entity(tableName = "moods")
+@Serializable
 data class MoodEntity(
     @PrimaryKey val id: String,
     val userId: String,
@@ -55,6 +59,7 @@ data class MoodEntity(
 )
 
 @Entity(tableName = "memories")
+@Serializable
 data class MemoryEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -75,6 +80,7 @@ data class MemoryEntity(
 )
 
 @Entity(tableName = "journal_entries")
+@Serializable
 data class JournalEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -93,6 +99,7 @@ data class JournalEntity(
 )
 
 @Entity(tableName = "messages")
+@Serializable
 data class MessageEntity(
     @PrimaryKey val id: String,
     val coupleId: String,
@@ -112,6 +119,7 @@ data class MessageEntity(
 )
 
 @Entity(tableName = "calendar_events")
+@Serializable
 data class CalendarEventEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -131,6 +139,7 @@ data class CalendarEventEntity(
 )
 
 @Entity(tableName = "tasks")
+@Serializable
 data class TaskEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -148,6 +157,7 @@ data class TaskEntity(
 )
 
 @Entity(tableName = "wishlists")
+@Serializable
 data class WishlistEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -164,6 +174,7 @@ data class WishlistEntity(
 )
 
 @Entity(tableName = "bucket_items")
+@Serializable
 data class BucketItemEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -180,6 +191,7 @@ data class BucketItemEntity(
 )
 
 @Entity(tableName = "love_letters")
+@Serializable
 data class LoveLetterEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -194,6 +206,7 @@ data class LoveLetterEntity(
 )
 
 @Entity(tableName = "surprises")
+@Serializable
 data class SurpriseEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -209,6 +222,7 @@ data class SurpriseEntity(
 )
 
 @Entity(tableName = "daily_questions")
+@Serializable
 data class DailyQuestionEntity(
     @PrimaryKey val id: String,
     val question: String,
@@ -216,6 +230,7 @@ data class DailyQuestionEntity(
 )
 
 @Entity(tableName = "question_answers")
+@Serializable
 data class QuestionAnswerEntity(
     @PrimaryKey val id: String,
     val questionId: String,
@@ -226,6 +241,7 @@ data class QuestionAnswerEntity(
 )
 
 @Entity(tableName = "countdowns")
+@Serializable
 data class CountdownEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -238,6 +254,7 @@ data class CountdownEntity(
 )
 
 @Entity(tableName = "expenses")
+@Serializable
 data class ExpenseEntity(
     @PrimaryKey val id: String,
     val amount: Double = 0.0,
@@ -254,6 +271,7 @@ data class ExpenseEntity(
 )
 
 @Entity(tableName = "timeline_events")
+@Serializable
 data class TimelineEventEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -267,6 +285,7 @@ data class TimelineEventEntity(
 )
 
 @Entity(tableName = "relationship_checkins")
+@Serializable
 data class RelationshipCheckinEntity(
     @PrimaryKey val id: String,
     val userId: String,
@@ -283,6 +302,7 @@ data class RelationshipCheckinEntity(
 )
 
 @Entity(tableName = "sync_queue")
+@Serializable
 data class SyncQueueEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val tableName: String,

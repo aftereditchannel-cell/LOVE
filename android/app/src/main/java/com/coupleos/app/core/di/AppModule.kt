@@ -136,5 +136,6 @@ object AppModule {
     @Provides fun provideExpenseDao(db: CoupleOSDatabase) = db.expenseDao()
     @Provides fun provideTimelineDao(db: CoupleOSDatabase) = db.timelineDao()
     @Provides fun provideDailyQuestionDao(db: CoupleOSDatabase) = db.dailyQuestionDao()
+    @Provides fun provideRelationshipCheckinDao(db: CoupleOSDatabase) = db.relationshipCheckinDao()
     @Provides fun provideSyncQueueDao(db: CoupleOSDatabase) = db.syncQueueDao()
 }

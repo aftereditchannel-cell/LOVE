@@ -20,6 +20,13 @@ interface UserDao {
 
     @Update
     suspend fun update(user: UserEntity)
+
+    @Query("SELECT * FROM users")
+    suspend fun getAllOnce(): List<UserEntity>
+
+    @Query("UPDATE users SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
 
 @Dao
@@ -35,6 +42,13 @@ interface CoupleDao {
 
     @Update
     suspend fun update(couple: CoupleEntity)
+
+    @Query("SELECT * FROM couples")
+    suspend fun getAllOnce(): List<CoupleEntity>
+
+    @Query("UPDATE couples SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
 
 @Dao
@@ -56,6 +70,13 @@ interface WishlistDao {
 
     @Query("UPDATE wishlists SET deletedAt = :deletedAt WHERE id = :id")
     suspend fun softDelete(id: String, deletedAt: String)
+
+    @Query("SELECT * FROM wishlists")
+    suspend fun getAllOnce(): List<WishlistEntity>
+
+    @Query("UPDATE wishlists SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
 
 @Dao
@@ -77,6 +98,13 @@ interface BucketItemDao {
 
     @Query("UPDATE bucket_items SET deletedAt = :deletedAt WHERE id = :id")
     suspend fun softDelete(id: String, deletedAt: String)
+
+    @Query("SELECT * FROM bucket_items")
+    suspend fun getAllOnce(): List<BucketItemEntity>
+
+    @Query("UPDATE bucket_items SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
 
 @Dao
@@ -92,6 +120,16 @@ interface LoveLetterDao {
 
     @Update
     suspend fun update(letter: LoveLetterEntity)
+
+    @Query("SELECT * FROM love_letters ORDER BY createdAt DESC")
+    fun getAllLetters(): Flow<List<LoveLetterEntity>>
+
+    @Query("SELECT * FROM love_letters")
+    suspend fun getAllOnce(): List<LoveLetterEntity>
+
+    @Query("UPDATE love_letters SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
 
 @Dao
@@ -107,6 +145,16 @@ interface SurpriseDao {
 
     @Update
     suspend fun update(surprise: SurpriseEntity)
+
+    @Query("SELECT * FROM surprises ORDER BY createdAt DESC")
+    fun getAllSurprises(): Flow<List<SurpriseEntity>>
+
+    @Query("SELECT * FROM surprises")
+    suspend fun getAllOnce(): List<SurpriseEntity>
+
+    @Query("UPDATE surprises SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
 
 @Dao
@@ -125,6 +173,13 @@ interface CountdownDao {
 
     @Query("DELETE FROM countdowns WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("SELECT * FROM countdowns")
+    suspend fun getAllOnce(): List<CountdownEntity>
+
+    @Query("UPDATE countdowns SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
 
 @Dao
@@ -143,6 +198,13 @@ interface ExpenseDao {
 
     @Query("DELETE FROM expenses WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("SELECT * FROM expenses")
+    suspend fun getAllOnce(): List<ExpenseEntity>
+
+    @Query("UPDATE expenses SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
 
 @Dao
@@ -158,6 +220,13 @@ interface TimelineDao {
 
     @Query("DELETE FROM timeline_events WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("SELECT * FROM timeline_events")
+    suspend fun getAllOnce(): List<TimelineEventEntity>
+
+    @Query("UPDATE timeline_events SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
 
 @Dao
@@ -173,6 +242,22 @@ interface DailyQuestionDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAnswer(answer: QuestionAnswerEntity)
+
+    @Query("SELECT * FROM daily_questions ORDER BY date DESC")
+    fun observeAllQuestions(): Flow<List<DailyQuestionEntity>>
+
+    @Query("SELECT * FROM question_answers ORDER BY createdAt DESC")
+    fun observeAllAnswers(): Flow<List<QuestionAnswerEntity>>
+
+    @Query("SELECT * FROM daily_questions")
+    suspend fun getAllQuestionsOnce(): List<DailyQuestionEntity>
+
+    @Query("SELECT * FROM question_answers")
+    suspend fun getAllAnswersOnce(): List<QuestionAnswerEntity>
+
+    @Query("UPDATE question_answers SET isSynced = 1")
+    suspend fun markAllAnswersSynced()
+
 }
 
 @Dao
@@ -194,4 +279,25 @@ interface SyncQueueDao {
 
     @Query("UPDATE sync_queue SET status = 'FAILED', attempts = attempts + 1, lastAttempt = :timestamp WHERE id = :id")
     suspend fun markFailed(id: Long, timestamp: String)
+}
+
+@Dao
+interface RelationshipCheckinDao {
+    @Query("SELECT * FROM relationship_checkins ORDER BY date DESC")
+    fun getAllCheckins(): Flow<List<RelationshipCheckinEntity>>
+
+    @Query("SELECT * FROM relationship_checkins WHERE userId = :userId AND date = :date LIMIT 1")
+    suspend fun getCheckin(userId: String, date: String): RelationshipCheckinEntity?
+
+    @Query("SELECT * FROM relationship_checkins")
+    suspend fun getAllOnce(): List<RelationshipCheckinEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(checkin: RelationshipCheckinEntity)
+
+    @Query("DELETE FROM relationship_checkins WHERE id = :id")
+    suspend fun delete(id: String)
+    @Query("UPDATE relationship_checkins SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }

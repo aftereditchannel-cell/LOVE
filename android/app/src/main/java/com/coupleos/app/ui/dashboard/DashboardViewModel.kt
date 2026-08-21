@@ -3,6 +3,7 @@ package com.coupleos.app.ui.dashboard
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.*
+import com.coupleos.app.data.repository.CoupleSyncRepository
 import com.coupleos.app.data.repository.GitHubRepository
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,6 +48,7 @@ class DashboardViewModel @Inject constructor(
     private val memoryDao: MemoryDao,
     private val countdownDao: CountdownDao,
     private val gitHubRepository: GitHubRepository,
+    private val syncRepository: CoupleSyncRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -201,16 +203,16 @@ class DashboardViewModel @Inject constructor(
                     )
                 }
 
-                // Reload local data
-                loadDashboard()
+                // Real two-way sync: pull both gists, merge into Room, push back.
+                val syncResult = syncRepository.sync()
 
-                // Try to sync from GitHub gists
-                // TODO: pull mood/memory data from partner gist
+                // Reload local data now that Room has the merged content
+                loadDashboard()
 
                 _uiState.update {
                     it.copy(
                         isRefreshing = false,
-                        feedbackMessage = "بروزرسانی شد ✅",
+                        feedbackMessage = syncResult.message,
                     )
                 }
             } catch (e: Exception) {

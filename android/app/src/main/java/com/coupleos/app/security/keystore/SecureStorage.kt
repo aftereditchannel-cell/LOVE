@@ -66,6 +66,11 @@ class SecureStorage @Inject constructor(
         private const val KEY_GIST_ID = "gist_id"
         private const val KEY_MY_GITHUB_USERNAME = "my_github_username"
         private const val KEY_PARTNER_GITHUB_USERNAME = "partner_github_username"
+        private const val KEY_MY_GIST_ID = "my_gist_id"
+        private const val KEY_PARTNER_GIST_ID = "partner_gist_id"
+        private const val KEY_LAST_SYNC_AT = "last_sync_at"
+        private const val KEY_LAST_SYNC_ERROR = "last_sync_error"
+        private const val KEY_AUTO_SYNC = "auto_sync_enabled"
     }
 
     // ── Token management ────────────────────────────────────
@@ -126,6 +131,23 @@ class SecureStorage @Inject constructor(
 
     fun savePartnerGitHubUsername(username: String) = prefs.edit().putString(KEY_PARTNER_GITHUB_USERNAME, username).apply()
     fun getPartnerGitHubUsername(): String? = prefs.getString(KEY_PARTNER_GITHUB_USERNAME, null)
+
+    /** Gist that belongs to MY token — the one we write into. */
+    fun saveMyGistId(id: String) = prefs.edit().putString(KEY_MY_GIST_ID, id).apply()
+    fun getMyGistId(): String? = prefs.getString(KEY_MY_GIST_ID, null)
+
+    /** Gist that belongs to the PARTNER token — read-only for us. */
+    fun savePartnerGistId(id: String) = prefs.edit().putString(KEY_PARTNER_GIST_ID, id).apply()
+    fun getPartnerGistId(): String? = prefs.getString(KEY_PARTNER_GIST_ID, null)
+
+    fun saveLastSyncAt(value: String) = prefs.edit().putString(KEY_LAST_SYNC_AT, value).apply()
+    fun getLastSyncAt(): String? = prefs.getString(KEY_LAST_SYNC_AT, null)
+
+    fun saveLastSyncError(value: String?) = prefs.edit().putString(KEY_LAST_SYNC_ERROR, value).apply()
+    fun getLastSyncError(): String? = prefs.getString(KEY_LAST_SYNC_ERROR, null)
+
+    fun setAutoSyncEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_AUTO_SYNC, enabled).apply()
+    fun isAutoSyncEnabled(): Boolean = prefs.getBoolean(KEY_AUTO_SYNC, true)
 
     // ── Masked tokens ───────────────────────────────────────
     fun getMaskedPersonalToken(): String {

@@ -220,8 +220,19 @@ fun DashboardScreen(
                 ) {
                     QuickAction(Modifier.weight(1f), Icons.Outlined.Mood, "حال") { navController.navigate(Screen.Mood.route) }
                     QuickAction(Modifier.weight(1f), Icons.Outlined.PhotoCamera, "خاطره") { navController.navigate(Screen.Memories.route) }
-                    QuickAction(Modifier.weight(1f), Icons.Outlined.EditNote, "یادداشت") { }
-                    QuickAction(Modifier.weight(1f), Icons.Outlined.CheckCircle, "کار") { }
+                    QuickAction(Modifier.weight(1f), Icons.Outlined.EditNote, "یادداشت") { navController.navigate(Screen.Journal.route) }
+                    QuickAction(Modifier.weight(1f), Icons.Outlined.CheckCircle, "کار") { navController.navigate(Screen.Tasks.route) }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    QuickAction(Modifier.weight(1f), Icons.Outlined.QuestionAnswer, "سؤال روز") { navController.navigate(Screen.Questions.route) }
+                    QuickAction(Modifier.weight(1f), Icons.Outlined.Email, "نامه") { navController.navigate(Screen.Letters.route) }
+                    QuickAction(Modifier.weight(1f), Icons.Outlined.Search, "جستجو") { navController.navigate(Screen.Search.route) }
+                    QuickAction(Modifier.weight(1f), Icons.Outlined.Settings, "تنظیمات") { navController.navigate(Screen.Settings.route) }
                 }
 
                 // Tasks

@@ -4,15 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.MemoryDao
 import com.coupleos.app.data.local.entity.MemoryEntity
-import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.CoupleSyncRepository
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import java.time.LocalDateTime
 import javax.inject.Inject
 
@@ -21,25 +18,12 @@ data class MemoriesUiState(
     val feedbackMessage: String? = null,
 )
 
-@Serializable
-data class MemorySyncData(
-    val id: String,
-    val title: String,
-    val description: String,
-    val date: String,
-    val location: String,
-    val privacy: String,
-    val isFavorite: Boolean,
-    val createdAt: String,
-)
-
 @HiltViewModel
 class MemoriesViewModel @Inject constructor(
     private val memoryDao: MemoryDao,
     private val secureStorage: SecureStorage,
     private val cryptoManager: CryptoManager,
-    private val gitHubRepository: GitHubRepository,
-    private val json: Json,
+    private val syncRepository: CoupleSyncRepository,
 ) : ViewModel() {
 
     val memories: StateFlow<List<MemoryEntity>> = memoryDao
@@ -65,10 +49,13 @@ class MemoriesViewModel @Inject constructor(
             )
             memoryDao.insert(memory)
 
-            // Sync to GitHub
-            syncMemoriesToGist()
-
-            _uiState.update { it.copy(feedbackMessage = "خاطره ثبت شد ❤️") }
+            val result = syncRepository.push()
+            _uiState.update {
+                it.copy(
+                    feedbackMessage = if (result.ok) "خاطره ثبت و روی توکن ذخیره شد ❤️"
+                    else "خاطره ثبت شد (لوکال) — ${result.message}"
+                )
+            }
         }
     }
 
@@ -81,29 +68,27 @@ class MemoriesViewModel @Inject constructor(
                     isSynced = false,
                 )
             )
+            syncRepository.push()
         }
     }
 
+    fun deleteMemory(memory: MemoryEntity) {
+        viewModelScope.launch {
+            memoryDao.softDelete(memory.id, LocalDateTime.now().toString())
+            syncRepository.push()
+            _uiState.update { it.copy(feedbackMessage = "حذف شد") }
+        }
+    }
+
+    /** Pull-to-refresh: real two-way sync with both tokens. */
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
-            try {
-                syncMemoriesToGist()
-                _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "بروزرسانی شد ✅") }
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "مشکلی پیش اومد") }
+            val result = syncRepository.sync()
+            _uiState.update {
+                it.copy(isRefreshing = false, feedbackMessage = result.message)
             }
         }
-    }
-
-    private suspend fun syncMemoriesToGist() {
-        try {
-            val allMemories = memories.value
-            val syncData = allMemories.map {
-                MemorySyncData(it.id, it.title, it.description, it.date, it.location, it.privacy, it.isFavorite, it.createdAt)
-            }
-            gitHubRepository.saveToGist(GitHubRepository.MEMORIES_FILE, json.encodeToString(syncData))
-        } catch (_: Exception) { /* will sync later */ }
     }
 
     fun clearFeedback() {

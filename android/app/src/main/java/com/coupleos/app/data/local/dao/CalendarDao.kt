@@ -35,4 +35,11 @@ interface CalendarDao {
 
     @Query("UPDATE calendar_events SET isSynced = 1 WHERE id = :id")
     suspend fun markSynced(id: String)
+
+    @Query("SELECT * FROM calendar_events")
+    suspend fun getAllOnce(): List<CalendarEventEntity>
+
+    @Query("UPDATE calendar_events SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }

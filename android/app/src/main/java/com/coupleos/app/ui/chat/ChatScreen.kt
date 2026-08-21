@@ -36,13 +36,14 @@ fun ChatScreen(
             .background(Background),
     ) {
         // Header
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Surface)
                 .padding(horizontal = 20.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = uiState.partnerName,
                     style = MaterialTheme.typography.titleMedium,
@@ -55,6 +56,13 @@ fun ChatScreen(
                         color = Primary,
                     )
                 }
+            }
+            TextButton(onClick = { viewModel.refresh() }, enabled = !uiState.isSyncing) {
+                Text(
+                    text = if (uiState.isSyncing) "..." else "همگام‌سازی",
+                    color = Primary,
+                    style = MaterialTheme.typography.labelMedium,
+                )
             }
         }
 

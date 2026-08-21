@@ -27,7 +27,7 @@ import com.coupleos.app.data.local.entity.*
         RelationshipCheckinEntity::class,
         SyncQueueEntity::class,
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 abstract class CoupleOSDatabase : RoomDatabase() {
@@ -47,5 +47,6 @@ abstract class CoupleOSDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
     abstract fun timelineDao(): TimelineDao
     abstract fun dailyQuestionDao(): DailyQuestionDao
+    abstract fun relationshipCheckinDao(): RelationshipCheckinDao
     abstract fun syncQueueDao(): SyncQueueDao
 }

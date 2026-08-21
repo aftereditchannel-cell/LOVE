@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.MoodDao
 import com.coupleos.app.data.local.entity.MoodEntity
-import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.CoupleSyncRepository
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -50,7 +50,7 @@ class MoodViewModel @Inject constructor(
     private val moodDao: MoodDao,
     private val secureStorage: SecureStorage,
     private val cryptoManager: CryptoManager,
-    private val gitHubRepository: GitHubRepository,
+    private val syncRepository: CoupleSyncRepository,
     private val json: Json,
 ) : ViewModel() {
 
@@ -119,52 +119,33 @@ class MoodViewModel @Inject constructor(
             )
             moodDao.insert(moodEntity)
 
-            // 2. Try to sync to GitHub Gist
-            try {
-                val syncData = MoodSyncData(
-                    mood = state.selectedMood,
-                    energy = state.energy,
-                    stress = state.stress,
-                    sleep = state.sleep,
-                    loveLevel = state.loveLevel,
-                    socialBattery = state.socialBattery,
-                    note = state.note,
-                    date = today,
-                    createdAt = now,
-                )
+            // 2. Persist the full snapshot onto the GitHub token.
+            //    (The old code overwrote moods.json with a single record, which
+            //     silently destroyed the whole history on every save.)
+            val result = syncRepository.push()
 
-                val result = gitHubRepository.saveToGist(
-                    GitHubRepository.MOODS_FILE,
-                    json.encodeToString(listOf(syncData))
+            _uiState.update {
+                it.copy(
+                    isSaving = false,
+                    saved = true,
+                    feedbackMessage = if (result.ok) "ثبت شد و روی توکن ذخیره شد \u2705"
+                    else "ثبت شد (لوکال) \u2014 ${result.message}",
                 )
-
-                if (result.isSuccess) {
-                    moodDao.markSynced(moodEntity.id)
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            saved = true,
-                            feedbackMessage = "ثبت شد و در GitHub ذخیره شد ✅",
-                        )
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            saved = true,
-                            feedbackMessage = "ثبت شد (لوکال) — مشکل در GitHub: ${result.exceptionOrNull()?.message}",
-                        )
-                    }
-                }
-            } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isSaving = false,
-                        saved = true,
-                        feedbackMessage = "ثبت شد (لوکال) — اتصال GitHub برقرار نیست",
-                    )
-                }
             }
         }
+    }
+
+    /** Pull both gists so the partner's mood shows up too. */
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true) }
+            val result = syncRepository.sync()
+            loadTodayMood()
+            _uiState.update { it.copy(isSaving = false, feedbackMessage = result.message) }
+        }
+    }
+
+    fun clearFeedback() {
+        _uiState.update { it.copy(feedbackMessage = null) }
     }
 }

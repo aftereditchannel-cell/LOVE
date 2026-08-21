@@ -38,4 +38,11 @@ interface TaskDao {
 
     @Query("SELECT COUNT(*) FROM tasks WHERE status != 'DONE' AND deletedAt IS NULL")
     fun getActiveTaskCount(): Flow<Int>
+
+    @Query("SELECT * FROM tasks")
+    suspend fun getAllOnce(): List<TaskEntity>
+
+    @Query("UPDATE tasks SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }

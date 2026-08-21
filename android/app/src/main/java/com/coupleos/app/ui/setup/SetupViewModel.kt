@@ -3,6 +3,7 @@ package com.coupleos.app.ui.setup
 import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.coupleos.app.data.repository.CoupleSyncRepository
 import com.coupleos.app.data.repository.GitHubRepository
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
@@ -44,6 +45,7 @@ class SetupViewModel @Inject constructor(
     private val secureStorage: SecureStorage,
     private val cryptoManager: CryptoManager,
     private val gitHubRepository: GitHubRepository,
+    private val syncRepository: CoupleSyncRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SetupUiState(
@@ -92,13 +94,22 @@ class SetupViewModel @Inject constructor(
 
             if (result.isSuccess) {
                 val user = result.getOrNull()!!
+
+                // A token can authenticate perfectly and still be unable to
+                // store anything. Warn immediately instead of failing later.
+                val scopes = gitHubRepository.getTokenScopes(token)
+                val missingGistScope = scopes != null &&
+                    !scopes.split(",").map { part -> part.trim() }.contains("gist")
+
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         step = SetupStep.ENTER_PARTNER_TOKEN,
                         myGitHubUsername = user.login,
                         successMessage = "✅ اتصال برقرار شد — ${user.login}",
-                        error = null,
+                        error = if (missingGistScope)
+                            "⚠️ این توکن دسترسی gist ندارد؛ داده‌ها ذخیره نمی‌شوند. یک توکن با scope «gist» بساز."
+                        else null,
                     )
                 }
                 // Clear success after 3 seconds
@@ -168,7 +179,12 @@ class SetupViewModel @Inject constructor(
             val state = _uiState.value
             val deviceId = cryptoManager.generateDeviceId()
             val userId = cryptoManager.generateId()
-            val coupleId = cryptoManager.generateId()
+
+            // The couple id must be IDENTICAL on both phones, otherwise the two
+            // devices would create two unrelated worlds. Deriving it from the
+            // two GitHub usernames guarantees that.
+            val coupleId = buildCoupleId(state.myGitHubUsername, state.partnerGitHubUsername)
+                ?: cryptoManager.generateId()
 
             // Save everything to secure storage
             secureStorage.savePersonalToken(state.personalToken.trim())
@@ -180,21 +196,33 @@ class SetupViewModel @Inject constructor(
             secureStorage.saveDeviceId(deviceId)
             state.myGitHubUsername?.let { secureStorage.saveMyGitHubUsername(it) }
             state.partnerGitHubUsername?.let { secureStorage.savePartnerGitHubUsername(it) }
-
-            // Try to create/find the shared Gist on GitHub
-            val gistResult = gitHubRepository.getOrCreateSharedGist()
-            if (gistResult.isSuccess) {
-                secureStorage.saveGistId(gistResult.getOrNull()!!)
-            }
-            // Even if Gist creation fails, we still pair locally
-
             secureStorage.setIsPaired(true)
+
+            // Create/find the storage gist on BOTH accounts. Without this the
+            // partner has nowhere to write and sync silently fails later.
+            val warnings = mutableListOf<String>()
+
+            val myGist = gitHubRepository.ensureGist(state.personalToken.trim(), isMine = true)
+            if (myGist.isFailure) {
+                warnings.add("Gist شخصی ساخته نشد: ${myGist.exceptionOrNull()?.message}")
+            }
+
+            val partnerGist = gitHubRepository.ensureGist(state.partnerToken.trim(), isMine = false)
+            if (partnerGist.isFailure) {
+                warnings.add("Gist پارتنر ساخته نشد: ${partnerGist.exceptionOrNull()?.message}")
+            }
+
+            // First real handshake: pull anything already stored, then push ours.
+            val syncResult = if (myGist.isSuccess) syncRepository.sync() else null
+            if (syncResult != null && !syncResult.ok) warnings.add(syncResult.message)
 
             _uiState.update {
                 it.copy(
                     step = SetupStep.COMPLETE,
                     isLoading = false,
-                    successMessage = "❤️ اتصال برقرار شد!",
+                    successMessage = if (warnings.isEmpty()) "❤️ اتصال برقرار شد و داده‌ها روی توکن ذخیره می‌شن"
+                    else "❤️ اتصال برقرار شد",
+                    error = warnings.firstOrNull(),
                 )
             }
 
@@ -210,6 +238,12 @@ class SetupViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    /** Stable couple id shared by both devices. */
+    private fun buildCoupleId(a: String?, b: String?): String? {
+        if (a.isNullOrBlank() || b.isNullOrBlank()) return null
+        return "couple-" + listOf(a.lowercase(), b.lowercase()).sorted().joinToString("-")
     }
 
     fun goBack() {

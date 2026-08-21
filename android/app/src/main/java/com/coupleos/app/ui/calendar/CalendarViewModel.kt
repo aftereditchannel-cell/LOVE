@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.CalendarDao
 import com.coupleos.app.data.local.entity.CalendarEventEntity
+import com.coupleos.app.data.repository.CoupleSyncRepository
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,6 +19,8 @@ data class CalendarUiState(
     val currentMonth: YearMonth = YearMonth.now(),
     val selectedDate: LocalDate = LocalDate.now(),
     val eventDates: Set<String> = emptySet(),
+    val isSyncing: Boolean = false,
+    val feedbackMessage: String? = null,
 )
 
 @HiltViewModel
@@ -25,6 +28,7 @@ class CalendarViewModel @Inject constructor(
     private val calendarDao: CalendarDao,
     private val secureStorage: SecureStorage,
     private val cryptoManager: CryptoManager,
+    private val syncRepository: CoupleSyncRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarUiState())
@@ -70,6 +74,34 @@ class CalendarViewModel @Inject constructor(
                 isSynced = false,
             )
             calendarDao.insert(event)
+
+            val result = syncRepository.push()
+            _uiState.update {
+                it.copy(
+                    feedbackMessage = if (result.ok) "رویداد ثبت و روی توکن ذخیره شد ✅"
+                    else "رویداد ثبت شد (لوکال) — ${result.message}"
+                )
+            }
         }
+    }
+
+    fun deleteEvent(event: CalendarEventEntity) {
+        viewModelScope.launch {
+            calendarDao.softDelete(event.id, LocalDateTime.now().toString())
+            syncRepository.push()
+            _uiState.update { it.copy(feedbackMessage = "حذف شد") }
+        }
+    }
+
+    fun syncNow() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncing = true) }
+            val result = syncRepository.sync()
+            _uiState.update { it.copy(isSyncing = false, feedbackMessage = result.message) }
+        }
+    }
+
+    fun clearFeedback() {
+        _uiState.update { it.copy(feedbackMessage = null) }
     }
 }

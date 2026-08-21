@@ -41,4 +41,11 @@ interface MemoryDao {
 
     @Query("SELECT COUNT(*) FROM memories WHERE deletedAt IS NULL")
     fun getMemoryCount(): Flow<Int>
+
+    @Query("SELECT * FROM memories")
+    suspend fun getAllOnce(): List<MemoryEntity>
+
+    @Query("UPDATE memories SET isSynced = 1")
+    suspend fun markAllSynced()
+
 }
