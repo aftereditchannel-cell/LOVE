@@ -168,13 +168,18 @@ cd android
 
 ## 🔑 First Launch
 
-1. Open the app → Splash screen
-2. **"تو کدومی؟"** → Select your identity
-3. Enter your personal token
-4. Enter your partner's token
-5. Device pairing completes
-6. Set up PIN lock
-7. Dashboard ready ❤️
+1. Create a GitHub Personal Access Token **with the `gist` scope** for each partner
+   (classic token → tick `gist`, or fine-grained → Gists: *Read and write*).
+   Without that scope the app can authenticate but can never store anything.
+2. Open the app → Splash screen
+3. **"تو کدومی؟"** → Select your identity
+4. Enter your personal token
+5. Enter your partner's token
+6. Both accounts get a private Gist named `CoupleOS-SharedData` and the first sync runs
+7. Set up PIN lock
+8. Dashboard ready ❤️
+
+Verify persistence any time via **بیشتر → تنظیمات → تست کامل ذخیره‌سازی روی توکن**.
 
 ---
 
@@ -183,26 +188,44 @@ cd android
 | Feature | Status |
 |---------|--------|
 | Core Architecture | ✅ |
-| Token Pairing | ✅ |
+| Token Pairing (both gists bootstrapped) | ✅ |
 | App Lock (PIN) | ✅ |
 | Secure Storage | ✅ |
-| Dashboard | ✅ |
+| Dashboard + real refresh | ✅ |
 | Mood System | ✅ |
 | Memories | ✅ |
-| Chat (local) | ✅ |
+| Chat (synced) | ✅ |
 | Calendar | ✅ |
-| Room Database | ✅ |
-| Backend API | ✅ |
-| WebSocket | ✅ |
-| Sync Engine | ✅ |
-| Tasks | 🚧 |
-| Wishlist | 🚧 |
-| Bucket List | 🚧 |
-| Love Letters | 🚧 |
-| Surprises | 🚧 |
+| Room Database (v2) | ✅ |
+| **GitHub Gist storage (read + write)** | ✅ |
+| **Two-way sync + conflict resolution** | ✅ |
+| **Background sync worker** | ✅ |
+| **Connection diagnostics** | ✅ |
+| Tasks | ✅ |
+| Wishlist | ✅ |
+| Bucket List | ✅ |
+| Love Letters (time-locked) | ✅ |
+| Surprises | ✅ |
+| Journal | ✅ |
+| Our Story / Timeline | ✅ |
+| Countdowns | ✅ |
+| Shared Expenses | ✅ |
+| Daily Questions | ✅ |
+| Relationship Check-in | ✅ |
+| Date Planner | ✅ |
+| Profile & Couple info | ✅ |
+| Global Search | ✅ |
+| Settings | ✅ |
+| Offline Assistant | ✅ |
 | Google Drive | 🚧 |
-| GitHub Backup | 🚧 |
-| AI Assistant | 🚧 |
+| Backend API (optional) | 🚧 |
+
+---
+
+## 📚 Documentation
+
+- [راهنمای کامل بخش‌های اپ](docs/FEATURES.md) — every screen and what it does
+- [مدل ذخیره‌سازی روی توکن](docs/SYNC.md) — how data really lands on your GitHub token
 
 ---
 

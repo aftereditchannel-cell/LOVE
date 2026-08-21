@@ -181,9 +181,31 @@ fun MoodScreen(
             shape = RoundedCornerShape(16.dp),
         ) {
             Text(
-                text = stringResource(R.string.save),
+                text = if (uiState.isSaving) "در حال ذخیره…" else stringResource(R.string.save),
                 style = MaterialTheme.typography.labelLarge,
             )
+        }
+
+        // Feedback: shows whether the mood really landed on the GitHub token
+        uiState.feedbackMessage?.let { feedback ->
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = feedback,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (feedback.contains("✅")) Success else Warning,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        TextButton(
+            onClick = { viewModel.refresh() },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("همگام‌سازی با توکن", color = Primary, style = MaterialTheme.typography.labelMedium)
         }
 
         Spacer(modifier = Modifier.height(32.dp))

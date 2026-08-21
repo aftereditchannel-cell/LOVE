@@ -35,9 +35,22 @@ fun CalendarScreen(
     val uiState by viewModel.uiState.collectAsState()
     val events by viewModel.events.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.feedbackMessage) {
+        uiState.feedbackMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearFeedback()
+        }
+    }
 
     Scaffold(
         containerColor = Background,
+        snackbarHost = {
+            SnackbarHost(snackbarHostState) { data ->
+                Snackbar(snackbarData = data, containerColor = SurfaceElevated, contentColor = TextPrimary)
+            }
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showCreateDialog = true },
@@ -56,12 +69,26 @@ fun CalendarScreen(
                 .verticalScroll(rememberScrollState()),
         ) {
             // Header
-            Text(
-                text = stringResource(R.string.calendar_title),
-                style = MaterialTheme.typography.headlineMedium,
-                color = TextPrimary,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(R.string.calendar_title),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = TextPrimary,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { viewModel.syncNow() }, enabled = !uiState.isSyncing) {
+                    Text(
+                        text = if (uiState.isSyncing) "..." else "همگام‌سازی",
+                        color = Primary,
+                        style = MaterialTheme.typography.labelMedium,
+                    )
+                }
+            }
 
             // Month navigation
             Row(

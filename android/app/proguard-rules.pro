@@ -40,3 +40,10 @@
 
 # Coil
 -dontwarn coil.**
+
+# CoupleOS serializable models (Gist snapshot + GitHub DTOs)
+-keep,includedescriptorclasses class com.coupleos.app.data.local.entity.** { *; }
+-keep,includedescriptorclasses class com.coupleos.app.data.remote.api.** { *; }
+-keep,includedescriptorclasses class com.coupleos.app.data.remote.dto.** { *; }
+-keep,includedescriptorclasses class com.coupleos.app.data.repository.CoupleSnapshot { *; }
+-keep,includedescriptorclasses class com.coupleos.app.data.repository.CoupleSharedData { *; }
