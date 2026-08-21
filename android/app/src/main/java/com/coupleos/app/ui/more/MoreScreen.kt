@@ -34,48 +34,50 @@ fun MoreScreen(navController: NavController) {
             style = MaterialTheme.typography.headlineMedium,
             color = TextPrimary,
         )
+        Text("همه قابلیت‌ها اینجا فعاله — دیتا روی توکن ذخیره میشه ❤️", style=MaterialTheme.typography.bodySmall, color=TextTertiary)
 
         Spacer(modifier = Modifier.height(24.dp))
 
         // Section: Personal
         SectionTitle("شخصی")
-        MoreMenuItem(Icons.Outlined.Person, stringResource(R.string.more_profile)) { }
+        MoreMenuItem(Icons.Outlined.Person, stringResource(R.string.more_profile)) { navController.navigate(Screen.Profile.route) }
         MoreMenuItem(Icons.Outlined.Mood, "حال روزانه") { navController.navigate(Screen.Mood.route) }
-        MoreMenuItem(Icons.Outlined.Book, "دفتر خاطرات") { }
+        MoreMenuItem(Icons.Outlined.Book, "دفتر خاطرات") { navController.navigate(Screen.Journal.route) }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Section: Together
         SectionTitle("دنیای ما")
-        MoreMenuItem(Icons.Outlined.AutoStories, stringResource(R.string.more_our_story)) { }
-        MoreMenuItem(Icons.Outlined.PhotoCamera, stringResource(R.string.more_photos)) { }
-        MoreMenuItem(Icons.Outlined.Star, stringResource(R.string.more_wishlist)) { }
-        MoreMenuItem(Icons.Outlined.Checklist, stringResource(R.string.more_bucket_list)) { }
-        MoreMenuItem(Icons.Outlined.Timer, stringResource(R.string.more_countdown)) { }
+        MoreMenuItem(Icons.Outlined.AutoStories, stringResource(R.string.more_our_story)) { navController.navigate(Screen.Profile.route) }
+        MoreMenuItem(Icons.Outlined.PhotoCamera, stringResource(R.string.more_photos)) { navController.navigate(Screen.Photos.route) }
+        MoreMenuItem(Icons.Outlined.Star, stringResource(R.string.more_wishlist)) { navController.navigate(Screen.Wishlist.route) }
+        MoreMenuItem(Icons.Outlined.Checklist, stringResource(R.string.more_bucket_list)) { navController.navigate(Screen.BucketList.route) }
+        MoreMenuItem(Icons.Outlined.Timer, stringResource(R.string.more_countdown)) { navController.navigate(Screen.Countdown.route) }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Section: Special
         SectionTitle("ویژه")
-        MoreMenuItem(Icons.Outlined.Email, stringResource(R.string.more_love_letters)) { }
-        MoreMenuItem(Icons.Outlined.CardGiftcard, stringResource(R.string.more_surprises)) { }
-        MoreMenuItem(Icons.Outlined.Restaurant, stringResource(R.string.more_date_planner)) { }
-        MoreMenuItem(Icons.Outlined.QuestionAnswer, stringResource(R.string.more_questions)) { }
-        MoreMenuItem(Icons.Outlined.Favorite, stringResource(R.string.more_relationship)) { }
+        MoreMenuItem(Icons.Outlined.Email, stringResource(R.string.more_love_letters)) { navController.navigate(Screen.Letters.route) }
+        MoreMenuItem(Icons.Outlined.CardGiftcard, stringResource(R.string.more_surprises)) { navController.navigate(Screen.Surprises.route) }
+        MoreMenuItem(Icons.Outlined.Restaurant, stringResource(R.string.more_date_planner)) { navController.navigate(Screen.Countdown.route) }
+        MoreMenuItem(Icons.Outlined.QuestionAnswer, stringResource(R.string.more_questions)) { navController.navigate(Screen.Questions.route) }
+        MoreMenuItem(Icons.Outlined.Favorite, stringResource(R.string.more_relationship)) { navController.navigate(Screen.Relationship.route) }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Section: Manage
         SectionTitle("مدیریت")
-        MoreMenuItem(Icons.Outlined.CheckCircle, stringResource(R.string.more_tasks)) { }
-        MoreMenuItem(Icons.Outlined.AccountBalanceWallet, stringResource(R.string.more_expenses)) { }
+        MoreMenuItem(Icons.Outlined.CheckCircle, stringResource(R.string.more_tasks)) { navController.navigate(Screen.Tasks.route) }
+        MoreMenuItem(Icons.Outlined.AccountBalanceWallet, stringResource(R.string.more_expenses)) { navController.navigate(Screen.Expenses.route) }
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // Section: Tools
         SectionTitle("ابزار")
-        MoreMenuItem(Icons.Outlined.SmartToy, stringResource(R.string.more_ai)) { }
-        MoreMenuItem(Icons.Outlined.Settings, stringResource(R.string.more_settings)) { }
+        MoreMenuItem(Icons.Outlined.SmartToy, stringResource(R.string.more_ai)) { navController.navigate(Screen.AI.route) }
+        MoreMenuItem(Icons.Outlined.Search, "جستجو") { navController.navigate(Screen.Search.route) }
+        MoreMenuItem(Icons.Outlined.Settings, stringResource(R.string.more_settings)) { navController.navigate(Screen.Settings.route) }
 
         Spacer(modifier = Modifier.height(80.dp))
     }
@@ -117,6 +119,8 @@ private fun MoreMenuItem(
             style = MaterialTheme.typography.bodyLarge,
             color = TextPrimary,
         )
+        Spacer(Modifier.weight(1f))
+        Text("›", style=MaterialTheme.typography.bodyLarge, color=TextTertiary)
     }
     HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
 }

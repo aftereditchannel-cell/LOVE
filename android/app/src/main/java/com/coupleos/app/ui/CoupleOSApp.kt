@@ -16,15 +16,30 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import com.coupleos.app.R
+import com.coupleos.app.ui.ai.AIScreen
+import com.coupleos.app.ui.bucket.BucketScreen
 import com.coupleos.app.ui.calendar.CalendarScreen
 import com.coupleos.app.ui.chat.ChatScreen
+import com.coupleos.app.ui.countdown.CountdownScreen
 import com.coupleos.app.ui.dashboard.DashboardScreen
+import com.coupleos.app.ui.expenses.ExpensesScreen
+import com.coupleos.app.ui.journal.JournalScreen
+import com.coupleos.app.ui.letters.LettersScreen
 import com.coupleos.app.ui.lock.LockScreen
 import com.coupleos.app.ui.memories.MemoriesScreen
 import com.coupleos.app.ui.mood.MoodScreen
 import com.coupleos.app.ui.more.MoreScreen
+import com.coupleos.app.ui.photos.PhotosScreen
+import com.coupleos.app.ui.profile.ProfileScreen
+import com.coupleos.app.ui.questions.QuestionsScreen
+import com.coupleos.app.ui.relationship.RelationshipScreen
+import com.coupleos.app.ui.search.SearchScreen
+import com.coupleos.app.ui.settings.SettingsScreen
 import com.coupleos.app.ui.setup.SetupScreen
 import com.coupleos.app.ui.splash.SplashScreen
+import com.coupleos.app.ui.surprises.SurpriseScreen
+import com.coupleos.app.ui.tasks.TasksScreen
+import com.coupleos.app.ui.wishlist.WishlistScreen
 import com.coupleos.app.ui.theme.*
 
 sealed class Screen(val route: String) {
@@ -53,6 +68,7 @@ sealed class Screen(val route: String) {
     data object OurStory : Screen("our_story")
     data object Settings : Screen("settings")
     data object Search : Screen("search")
+    data object AI : Screen("ai")
 }
 
 data class BottomNavItem(
@@ -161,6 +177,24 @@ fun MainContent(navController: NavHostController) {
             composable(Screen.Calendar.route) { CalendarScreen() }
             composable(Screen.More.route) { MoreScreen(navController = navController) }
             composable(Screen.Mood.route) { MoodScreen(onBack = { navController.popBackStack() }) }
+            // ── All features now active ─────────────────────
+            composable(Screen.Journal.route) { JournalScreen(onBack = { navController.popBackStack() }) }
+            composable(Screen.Tasks.route) { TasksScreen() }
+            composable(Screen.Wishlist.route) { WishlistScreen() }
+            composable(Screen.BucketList.route) { BucketScreen() }
+            composable(Screen.Countdown.route) { CountdownScreen() }
+            composable(Screen.Letters.route) { LettersScreen() }
+            composable(Screen.Questions.route) { QuestionsScreen() }
+            composable(Screen.Surprises.route) { SurpriseScreen() }
+            composable(Screen.Expenses.route) { ExpensesScreen() }
+            composable(Screen.Relationship.route) { RelationshipScreen() }
+            composable(Screen.Profile.route) { ProfileScreen() }
+            composable(Screen.OurStory.route) { ProfileScreen() }
+            composable(Screen.Photos.route) { PhotosScreen() }
+            composable(Screen.Settings.route) { SettingsScreen() }
+            composable(Screen.Search.route) { SearchScreen() }
+            composable(Screen.AI.route) { AIScreen() }
+            composable(Screen.DatePlanner.route) { CountdownScreen() }
         }
     }
 }

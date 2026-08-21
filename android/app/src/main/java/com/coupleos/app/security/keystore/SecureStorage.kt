@@ -64,8 +64,12 @@ class SecureStorage @Inject constructor(
         private const val KEY_LOCK_SETUP_DONE = "lock_setup_done"
         private const val KEY_PROFILE_SETUP_DONE = "profile_setup_done"
         private const val KEY_GIST_ID = "gist_id"
+        private const val KEY_MY_GIST_ID = "my_gist_id"
+        private const val KEY_PARTNER_GIST_ID = "partner_gist_id"
         private const val KEY_MY_GITHUB_USERNAME = "my_github_username"
         private const val KEY_PARTNER_GITHUB_USERNAME = "partner_github_username"
+        private const val KEY_LAST_SYNC = "last_sync_timestamp"
+        private const val KEY_GIST_SYNC_ENABLED = "gist_sync_enabled"
     }
 
     // ── Token management ────────────────────────────────────
@@ -118,14 +122,26 @@ class SecureStorage @Inject constructor(
     fun isProfileSetupDone(): Boolean = prefs.getBoolean(KEY_PROFILE_SETUP_DONE, false)
 
     // ── GitHub / Gist ───────────────────────────────────────
-    fun saveGistId(id: String) = prefs.edit().putString(KEY_GIST_ID, id).apply()
-    fun getGistId(): String? = prefs.getString(KEY_GIST_ID, null)
+    fun saveGistId(id: String) {
+        prefs.edit().putString(KEY_GIST_ID, id).putString(KEY_MY_GIST_ID, id).apply()
+    }
+    fun getGistId(): String? = prefs.getString(KEY_MY_GIST_ID, null) ?: prefs.getString(KEY_GIST_ID, null)
+    fun saveMyGistId(id: String) = prefs.edit().putString(KEY_MY_GIST_ID, id).apply()
+    fun getMyGistId(): String? = prefs.getString(KEY_MY_GIST_ID, null) ?: prefs.getString(KEY_GIST_ID, null)
+    fun savePartnerGistId(id: String) = prefs.edit().putString(KEY_PARTNER_GIST_ID, id).apply()
+    fun getPartnerGistId(): String? = prefs.getString(KEY_PARTNER_GIST_ID, null)
 
     fun saveMyGitHubUsername(username: String) = prefs.edit().putString(KEY_MY_GITHUB_USERNAME, username).apply()
     fun getMyGitHubUsername(): String? = prefs.getString(KEY_MY_GITHUB_USERNAME, null)
 
     fun savePartnerGitHubUsername(username: String) = prefs.edit().putString(KEY_PARTNER_GITHUB_USERNAME, username).apply()
     fun getPartnerGitHubUsername(): String? = prefs.getString(KEY_PARTNER_GITHUB_USERNAME, null)
+
+    fun saveLastSync(timestamp: String) = prefs.edit().putString(KEY_LAST_SYNC, timestamp).apply()
+    fun getLastSync(): String? = prefs.getString(KEY_LAST_SYNC, null)
+
+    fun setGistSyncEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_GIST_SYNC_ENABLED, enabled).apply()
+    fun isGistSyncEnabled(): Boolean = prefs.getBoolean(KEY_GIST_SYNC_ENABLED, true)
 
     // ── Masked tokens ───────────────────────────────────────
     fun getMaskedPersonalToken(): String {

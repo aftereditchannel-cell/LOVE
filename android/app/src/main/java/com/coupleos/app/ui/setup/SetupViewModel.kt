@@ -1,8 +1,9 @@
 package com.coupleos.app.ui.setup
 
-import android.os.Build
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.coupleos.app.data.remote.api.CoupleOSApi
+import com.coupleos.app.data.remote.dto.PairRequest
 import com.coupleos.app.data.repository.GitHubRepository
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
@@ -44,6 +45,7 @@ class SetupViewModel @Inject constructor(
     private val secureStorage: SecureStorage,
     private val cryptoManager: CryptoManager,
     private val gitHubRepository: GitHubRepository,
+    private val api: CoupleOSApi,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SetupUiState(
@@ -71,9 +73,6 @@ class SetupViewModel @Inject constructor(
         _uiState.update { it.copy(partnerToken = token, error = null) }
     }
 
-    /**
-     * Validate personal GitHub token by calling GitHub API /user
-     */
     fun validatePersonalToken() {
         val token = _uiState.value.personalToken.trim()
         if (token.isBlank()) {
@@ -97,11 +96,10 @@ class SetupViewModel @Inject constructor(
                         isLoading = false,
                         step = SetupStep.ENTER_PARTNER_TOKEN,
                         myGitHubUsername = user.login,
-                        successMessage = "✅ اتصال برقرار شد — ${user.login}",
+                        successMessage = "✅ اتصال برقرار شد — ${user.login} (دیتا روی توکن ثبت میشه)",
                         error = null,
                     )
                 }
-                // Clear success after 3 seconds
                 delay(3000)
                 _uiState.update { it.copy(successMessage = null) }
             } else {
@@ -116,9 +114,6 @@ class SetupViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Validate partner GitHub token and then pair
-     */
     fun validateAndPair() {
         val token = _uiState.value.partnerToken.trim()
         if (token.isBlank()) {
@@ -147,7 +142,6 @@ class SetupViewModel @Inject constructor(
                         successMessage = "✅ پارتنر پیدا شد — ${partnerUser.login}",
                     )
                 }
-                // Now do the actual pairing
                 performPairing()
             } else {
                 _uiState.update {
@@ -170,7 +164,7 @@ class SetupViewModel @Inject constructor(
             val userId = cryptoManager.generateId()
             val coupleId = cryptoManager.generateId()
 
-            // Save everything to secure storage
+            // Save everything to secure storage FIRST (so token data is locally available)
             secureStorage.savePersonalToken(state.personalToken.trim())
             secureStorage.savePartnerToken(state.partnerToken.trim())
             secureStorage.saveSessionToken(cryptoManager.generateId())
@@ -181,12 +175,50 @@ class SetupViewModel @Inject constructor(
             state.myGitHubUsername?.let { secureStorage.saveMyGitHubUsername(it) }
             state.partnerGitHubUsername?.let { secureStorage.savePartnerGitHubUsername(it) }
 
-            // Try to create/find the shared Gist on GitHub
-            val gistResult = gitHubRepository.getOrCreateSharedGist()
-            if (gistResult.isSuccess) {
-                secureStorage.saveGistId(gistResult.getOrNull()!!)
+            // Try to create/find Gists on BOTH tokens — this is where data will be registered
+            var gistSuccess = false
+            try {
+                val (myGist, partnerGist) = gitHubRepository.ensureBothGists()
+                if (myGist != null) {
+                    secureStorage.saveMyGistId(myGist)
+                    gistSuccess = true
+                }
+                if (partnerGist != null) {
+                    secureStorage.savePartnerGistId(partnerGist)
+                    gistSuccess = true
+                }
+                // Also save legacy gistId
+                myGist?.let { secureStorage.saveGistId(it) }
+                
+                if (gistSuccess) {
+                    // Write initial test data to verify token can store/receive
+                    val testData = """[{"id":"welcome-${System.currentTimeMillis()}","title":"شروع دنیای ما ❤️","description":"دنیای کوچیک ما با موفقیت روی توکن ساخته شد","date":"${java.time.LocalDate.now()}","location":"","privacy":"SHARED","isFavorite":true,"createdAt":"${java.time.LocalDateTime.now()}"}]"""
+                    gitHubRepository.saveFullList(GitHubRepository.MEMORIES_FILE, testData)
+                }
+            } catch (e: Exception) {
+                // Even if Gist creation fails, we still pair locally — will retry later
+                gistSuccess = false
             }
-            // Even if Gist creation fails, we still pair locally
+
+            // Also try backend pairing if backend is reachable (optional)
+            try {
+                val deviceName = android.os.Build.MODEL ?: "Android Device"
+                val apiResult = api.pairDevice(PairRequest(
+                    personalToken = state.personalToken.trim(),
+                    partnerToken = state.partnerToken.trim(),
+                    role = state.selectedRole,
+                    deviceName = deviceName,
+                    deviceId = deviceId
+                ))
+                if (apiResult.isSuccessful && apiResult.body() != null) {
+                    val body = apiResult.body()!!
+                    secureStorage.saveSessionToken(body.sessionToken)
+                    secureStorage.saveUserId(body.userId)
+                    secureStorage.saveCoupleId(body.coupleId)
+                }
+            } catch (_: Exception) {
+                // Backend not available — GitHub token storage is primary
+            }
 
             secureStorage.setIsPaired(true)
 
@@ -194,11 +226,11 @@ class SetupViewModel @Inject constructor(
                 it.copy(
                     step = SetupStep.COMPLETE,
                     isLoading = false,
-                    successMessage = "❤️ اتصال برقرار شد!",
+                    successMessage = if (gistSuccess) "❤️ اتصال و ذخیره روی توکن انجام شد!" else "❤️ اتصال برقرار شد! (همگام سازی توکن بزودی)",
                 )
             }
 
-            delay(2000)
+            delay(1800)
             _uiState.update { it.copy(isPaired = true) }
 
         } catch (e: Exception) {

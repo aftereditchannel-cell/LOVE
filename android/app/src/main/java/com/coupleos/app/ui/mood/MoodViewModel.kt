@@ -10,6 +10,7 @@ import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -34,6 +35,8 @@ data class MoodUiState(
 
 @Serializable
 data class MoodSyncData(
+    val id: String = "",
+    val userId: String = "",
     val mood: String,
     val energy: Int,
     val stress: Int,
@@ -57,7 +60,10 @@ class MoodViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MoodUiState())
     val uiState: StateFlow<MoodUiState> = _uiState
 
-    init { loadTodayMood() }
+    init { 
+        loadTodayMood()
+        pullRemoteMoods()
+    }
 
     private fun loadTodayMood() {
         viewModelScope.launch {
@@ -76,6 +82,38 @@ class MoodViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    private fun pullRemoteMoods() {
+        viewModelScope.launch {
+            try {
+                val remote = gitHubRepository.readMergedContent(GitHubRepository.MOODS_FILE).getOrNull()
+                if (remote != null && remote != "[]") {
+                    val list = try { json.decodeFromString<List<MoodSyncData>>(remote) } catch (_: Exception) { emptyList() }
+                    for (item in list) {
+                        val existing = moodDao.getMoodByDate(item.userId, item.date)
+                        if (existing == null) {
+                            moodDao.insert(MoodEntity(
+                                id = item.id.ifEmpty { cryptoManager.generateId() },
+                                userId = item.userId,
+                                mood = item.mood,
+                                energy = item.energy,
+                                stress = item.stress,
+                                sleep = item.sleep,
+                                loveLevel = item.loveLevel,
+                                socialBattery = item.socialBattery,
+                                note = item.note,
+                                date = item.date,
+                                createdAt = item.createdAt,
+                                isSynced = true
+                            ))
+                        }
+                    }
+                    // Reload today after pull
+                    loadTodayMood()
+                }
+            } catch (_: Exception) {}
         }
     }
 
@@ -103,8 +141,9 @@ class MoodViewModel @Inject constructor(
             val existing = moodDao.getMoodByDate(userId, today)
 
             // 1. Save to local Room DB
+            val moodId = existing?.id ?: cryptoManager.generateId()
             val moodEntity = MoodEntity(
-                id = existing?.id ?: cryptoManager.generateId(),
+                id = moodId,
                 userId = userId,
                 mood = state.selectedMood,
                 energy = state.energy,
@@ -119,32 +158,45 @@ class MoodViewModel @Inject constructor(
             )
             moodDao.insert(moodEntity)
 
-            // 2. Try to sync to GitHub Gist
+            // 2. Sync to GitHub Gist — save FULL list merged so data is truly on token
             try {
-                val syncData = MoodSyncData(
-                    mood = state.selectedMood,
-                    energy = state.energy,
-                    stress = state.stress,
-                    sleep = state.sleep,
-                    loveLevel = state.loveLevel,
-                    socialBattery = state.socialBattery,
-                    note = state.note,
-                    date = today,
-                    createdAt = now,
-                )
+                // Collect all local moods to push complete history
+                val allMoods = moodDao.getMoodsByUser(userId).first()
+                val syncList = allMoods.map {
+                    MoodSyncData(
+                        id = it.id,
+                        userId = it.userId,
+                        mood = it.mood,
+                        energy = it.energy,
+                        stress = it.stress,
+                        sleep = it.sleep,
+                        loveLevel = it.loveLevel,
+                        socialBattery = it.socialBattery,
+                        note = it.note,
+                        date = it.date,
+                        createdAt = it.createdAt
+                    )
+                }
+                // Also merge with remote to avoid overwriting partner's moods
+                val remoteStr = gitHubRepository.readMergedContent(GitHubRepository.MOODS_FILE).getOrNull()
+                val remoteList = if (remoteStr != null) try { json.decodeFromString<List<MoodSyncData>>(remoteStr) } catch (_: Exception) { emptyList() } else emptyList()
+                val mergedMap = mutableMapOf<String, MoodSyncData>()
+                // remote first
+                remoteList.forEach { mergedMap["${it.userId}-${it.date}"] = it }
+                // local overrides
+                syncList.forEach { mergedMap["${it.userId}-${it.date}"] = it }
+                val finalList = mergedMap.values.toList()
+                val finalJson = json.encodeToString(finalList)
 
-                val result = gitHubRepository.saveToGist(
-                    GitHubRepository.MOODS_FILE,
-                    json.encodeToString(listOf(syncData))
-                )
+                val result = gitHubRepository.saveFullList(GitHubRepository.MOODS_FILE, finalJson)
 
                 if (result.isSuccess) {
-                    moodDao.markSynced(moodEntity.id)
+                    moodDao.markSynced(moodId)
                     _uiState.update {
                         it.copy(
                             isSaving = false,
                             saved = true,
-                            feedbackMessage = "ثبت شد و در GitHub ذخیره شد ✅",
+                            feedbackMessage = "ثبت شد و روی توکن ذخیره شد ✅",
                         )
                     }
                 } else {
@@ -152,7 +204,7 @@ class MoodViewModel @Inject constructor(
                         it.copy(
                             isSaving = false,
                             saved = true,
-                            feedbackMessage = "ثبت شد (لوکال) — مشکل در GitHub: ${result.exceptionOrNull()?.message}",
+                            feedbackMessage = "ثبت شد (لوکال) — خطا در ذخیره روی توکن: ${result.exceptionOrNull()?.message}",
                         )
                     }
                 }
@@ -161,10 +213,14 @@ class MoodViewModel @Inject constructor(
                     it.copy(
                         isSaving = false,
                         saved = true,
-                        feedbackMessage = "ثبت شد (لوکال) — اتصال GitHub برقرار نیست",
+                        feedbackMessage = "ثبت شد (لوکال) — اتصال توکن برقرار نیست: ${e.localizedMessage}",
                     )
                 }
             }
         }
+    }
+
+    fun refreshFromToken() {
+        pullRemoteMoods()
     }
 }

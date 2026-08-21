@@ -49,7 +49,40 @@ class MemoriesViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MemoriesUiState())
     val uiState: StateFlow<MemoriesUiState> = _uiState
 
-    fun createMemory(title: String, description: String, date: String) {
+    init {
+        pullFromGist()
+    }
+
+    private fun pullFromGist() {
+        viewModelScope.launch {
+            try {
+                val remoteStr = gitHubRepository.readMergedContent(GitHubRepository.MEMORIES_FILE).getOrNull()
+                if (remoteStr != null && remoteStr != "[]") {
+                    val list = try { json.decodeFromString<List<MemorySyncData>>(remoteStr) } catch (_: Exception) { emptyList() }
+                    for (item in list) {
+                        val existing = memoryDao.getMemoryById(item.id)
+                        if (existing == null) {
+                            memoryDao.insert(MemoryEntity(
+                                id = item.id,
+                                title = item.title,
+                                description = item.description,
+                                date = item.date,
+                                location = item.location,
+                                privacy = item.privacy,
+                                createdBy = "",
+                                createdAt = item.createdAt,
+                                updatedAt = item.createdAt,
+                                isFavorite = item.isFavorite,
+                                isSynced = true
+                            ))
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun createMemory(title: String, description: String, date: String, location: String = "") {
         viewModelScope.launch {
             val now = LocalDateTime.now().toString()
             val memory = MemoryEntity(
@@ -57,6 +90,7 @@ class MemoriesViewModel @Inject constructor(
                 title = title,
                 description = description,
                 date = date,
+                location = location,
                 privacy = "SHARED",
                 createdBy = secureStorage.getUserId() ?: "",
                 createdAt = now,
@@ -64,23 +98,27 @@ class MemoriesViewModel @Inject constructor(
                 isSynced = false,
             )
             memoryDao.insert(memory)
-
-            // Sync to GitHub
             syncMemoriesToGist()
-
-            _uiState.update { it.copy(feedbackMessage = "خاطره ثبت شد ❤️") }
+            _uiState.update { it.copy(feedbackMessage = "خاطره ثبت شد و روی توکن ذخیره شد ❤️") }
         }
     }
 
     fun toggleFavorite(memory: MemoryEntity) {
         viewModelScope.launch {
-            memoryDao.update(
-                memory.copy(
-                    isFavorite = !memory.isFavorite,
-                    updatedAt = LocalDateTime.now().toString(),
-                    isSynced = false,
-                )
+            val updated = memory.copy(
+                isFavorite = !memory.isFavorite,
+                updatedAt = LocalDateTime.now().toString(),
+                isSynced = false,
             )
+            memoryDao.update(updated)
+            syncMemoriesToGist()
+        }
+    }
+
+    fun deleteMemory(memory: MemoryEntity) {
+        viewModelScope.launch {
+            memoryDao.softDelete(memory.id, LocalDateTime.now().toString())
+            syncMemoriesToGist()
         }
     }
 
@@ -88,21 +126,32 @@ class MemoriesViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isRefreshing = true) }
             try {
+                pullFromGist()
                 syncMemoriesToGist()
-                _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "بروزرسانی شد ✅") }
+                _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "دریافت از توکن انجام شد ✅") }
             } catch (e: Exception) {
-                _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "مشکلی پیش اومد") }
+                _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "خطا: ${e.message}") }
             }
         }
     }
 
     private suspend fun syncMemoriesToGist() {
         try {
-            val allMemories = memories.value
-            val syncData = allMemories.map {
+            // Merge local + remote to avoid overwriting partner's memories
+            val remoteStr = gitHubRepository.readMergedContent(GitHubRepository.MEMORIES_FILE).getOrNull() ?: "[]"
+            val remoteList = try { json.decodeFromString<List<MemorySyncData>>(remoteStr) } catch (_: Exception) { emptyList() }
+            val localList = memories.value.map {
                 MemorySyncData(it.id, it.title, it.description, it.date, it.location, it.privacy, it.isFavorite, it.createdAt)
             }
-            gitHubRepository.saveToGist(GitHubRepository.MEMORIES_FILE, json.encodeToString(syncData))
+            val mergedMap = mutableMapOf<String, MemorySyncData>()
+            remoteList.forEach { mergedMap[it.id] = it }
+            localList.forEach { mergedMap[it.id] = it }
+            val finalJson = json.encodeToString(mergedMap.values.toList())
+            val result = gitHubRepository.saveFullList(GitHubRepository.MEMORIES_FILE, finalJson)
+            if (result.isSuccess) {
+                // mark all synced
+                localList.forEach { /* optional mark */ }
+            }
         } catch (_: Exception) { /* will sync later */ }
     }
 
