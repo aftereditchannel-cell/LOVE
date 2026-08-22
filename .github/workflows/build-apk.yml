@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-#  GitHub Actions — Build & Release APK  (debug + signed release)
+#  GitHub  Actions — Build & Release APK  (debug + signed release)
 #  Repo  : aftereditchannel-cell/LOVE
 #  Branch: arena/01a02144-love
 #  Stack : Kotlin 1.9 · AGP 8.5 · Gradle 8.7 · Compose · Hilt · Room
