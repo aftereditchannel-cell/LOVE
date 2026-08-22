@@ -26,7 +26,7 @@ import javax.inject.Singleton
 class GitHubRepository @Inject constructor(
     private val gitHubApi: GitHubApi,
     private val secureStorage: SecureStorage,
-    private val json: Json,
+    @PublishedApi internal val json: Json,
 ) {
     companion object {
         const val COUPLE_GIST_DESCRIPTION = "CoupleOS-SharedData"
