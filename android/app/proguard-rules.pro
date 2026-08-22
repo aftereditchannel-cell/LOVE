@@ -1,13 +1,25 @@
 # Couple OS ProGuard Rules
 
-# Keep Kotlin serialization
--keepattributes *Annotation*, InnerClasses
+# ── Kotlin serialization ─────────────────────────────────────
+# Keep all @Serializable classes and their generated serializers so JSON
+# encode/decode keeps working in minified release builds.
+-keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature, RuntimeVisibleAnnotations, RuntimeVisibleParameterAnnotations
 -dontnote kotlinx.serialization.AnnotationsKt
--keepclassmembers class kotlinx.serialization.json.** { *** Companion; }
--keepclasseswithmembers class kotlinx.serialization.json.** { kotlinx.serialization.KSerializer serializer(...); }
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
 -keep,includedescriptorclasses class com.coupleos.app.**$$serializer { *; }
--keepclassmembers class com.coupleos.app.** { *** Companion; }
--keepclasseswithmembers class com.coupleos.app.** { kotlinx.serialization.KSerializer serializer(...); }
+-keepclassmembers class com.coupleos.app.** {
+    *** Companion;
+}
+-keepclasseswithmembers class com.coupleos.app.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+# Broad safety net: keep every class annotated @Serializable and its fields.
+-keep @kotlinx.serialization.Serializable class com.coupleos.app.** { *; }
 
 # Room
 -keep class * extends androidx.room.RoomDatabase

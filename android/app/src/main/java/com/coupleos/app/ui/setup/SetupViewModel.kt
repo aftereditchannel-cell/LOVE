@@ -177,6 +177,7 @@ class SetupViewModel @Inject constructor(
 
             // Try to create/find Gists on BOTH tokens — this is where data will be registered
             var gistSuccess = false
+            var gistError: String? = null
             try {
                 val (myGist, partnerGist) = gitHubRepository.ensureBothGists()
                 if (myGist != null) {
@@ -189,15 +190,31 @@ class SetupViewModel @Inject constructor(
                 }
                 // Also save legacy gistId
                 myGist?.let { secureStorage.saveGistId(it) }
-                
-                if (gistSuccess) {
-                    // Write initial test data to verify token can store/receive
-                    val testData = """[{"id":"welcome-${System.currentTimeMillis()}","title":"شروع دنیای ما ❤️","description":"دنیای کوچیک ما با موفقیت روی توکن ساخته شد","date":"${java.time.LocalDate.now()}","location":"","privacy":"SHARED","isFavorite":true,"createdAt":"${java.time.LocalDateTime.now()}"}]"""
-                    gitHubRepository.saveFullList(GitHubRepository.MEMORIES_FILE, testData)
+
+                // Verify the tokens can actually WRITE to the gists (needs `gist` scope).
+                // This catches the common case where the token validates but can't store data.
+                if (myGist != null) {
+                    val verify = gitHubRepository.verifyGistWritable(state.personalToken.trim(), myGist)
+                    if (verify.isFailure) gistError = "توکن خودت: ${verify.exceptionOrNull()?.message}"
+                }
+                if (partnerGist != null && gistError == null) {
+                    val verify = gitHubRepository.verifyGistWritable(state.partnerToken.trim(), partnerGist)
+                    if (verify.isFailure) gistError = "توکن پارتنر: ${verify.exceptionOrNull()?.message}"
+                }
+
+                if (gistSuccess && gistError == null) {
+                    // Seed welcome memory ONLY if the token has no memories yet,
+                    // so re-pairing never clobbers previously stored data.
+                    val existingMemories = gitHubRepository.readMergedContent(GitHubRepository.MEMORIES_FILE).getOrNull()
+                    if (existingMemories == null || existingMemories == "[]") {
+                        val testData = """[{"id":"welcome-${System.currentTimeMillis()}","title":"شروع دنیای ما ❤️","description":"دنیای کوچیک ما با موفقیت روی توکن ساخته شد","date":"${java.time.LocalDate.now()}","location":"","privacy":"SHARED","isFavorite":true,"createdAt":"${java.time.LocalDateTime.now()}"}]"""
+                        gitHubRepository.saveFullList(GitHubRepository.MEMORIES_FILE, testData)
+                    }
                 }
             } catch (e: Exception) {
                 // Even if Gist creation fails, we still pair locally — will retry later
                 gistSuccess = false
+                gistError = e.localizedMessage
             }
 
             // Also try backend pairing if backend is reachable (optional)
@@ -226,7 +243,11 @@ class SetupViewModel @Inject constructor(
                 it.copy(
                     step = SetupStep.COMPLETE,
                     isLoading = false,
-                    successMessage = if (gistSuccess) "❤️ اتصال و ذخیره روی توکن انجام شد!" else "❤️ اتصال برقرار شد! (همگام سازی توکن بزودی)",
+                    successMessage = when {
+                        gistSuccess && gistError == null -> "❤️ اتصال و ذخیره روی توکن انجام شد!"
+                        gistSuccess && gistError != null -> "⚠️ اتصال برقرار شد ولی ذخیره روی توکن مشکل دارد: $gistError"
+                        else -> "❤️ اتصال برقرار شد! (همگام سازی توکن بزودی)"
+                    },
                 )
             }
 

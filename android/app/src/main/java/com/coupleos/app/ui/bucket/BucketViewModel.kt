@@ -53,7 +53,7 @@ class BucketViewModel @Inject constructor(
         dao.update(itm.copy(isCompleted=!itm.isCompleted, completedDate=if(!itm.isCompleted) java.time.LocalDate.now().toString() else "", updatedAt=LocalDateTime.now().toString()))
         sync()
     }}
-    fun delete(id:String){ viewModelScope.launch{ dao.softDelete(id, LocalDateTime.now().toString()); sync() }}
+    fun delete(id:String){ viewModelScope.launch{ dao.softDelete(id, LocalDateTime.now().toString()); repo.removeFromList(GitHubRepository.BUCKET_FILE, id); sync() }}
     fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
     private suspend fun sync(){
         try{

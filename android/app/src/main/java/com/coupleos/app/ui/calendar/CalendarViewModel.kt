@@ -134,6 +134,7 @@ class CalendarViewModel @Inject constructor(
     fun deleteEvent(id: String) {
         viewModelScope.launch {
             calendarDao.softDelete(id, LocalDateTime.now().toString())
+            gitHubRepository.removeFromList(GitHubRepository.CALENDAR_FILE, id)
             syncToGist()
         }
     }

@@ -118,6 +118,7 @@ class MemoriesViewModel @Inject constructor(
     fun deleteMemory(memory: MemoryEntity) {
         viewModelScope.launch {
             memoryDao.softDelete(memory.id, LocalDateTime.now().toString())
+            gitHubRepository.removeFromList(GitHubRepository.MEMORIES_FILE, memory.id)
             syncMemoriesToGist()
         }
     }

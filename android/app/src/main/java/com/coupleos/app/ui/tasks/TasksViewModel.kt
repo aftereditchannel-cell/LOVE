@@ -66,6 +66,7 @@ class TasksViewModel @Inject constructor(
     fun deleteTask(id:String){
         viewModelScope.launch{
             taskDao.softDelete(id, LocalDateTime.now().toString())
+            gitHubRepository.removeFromList(GitHubRepository.TASKS_FILE, id)
             sync()
         }
     }

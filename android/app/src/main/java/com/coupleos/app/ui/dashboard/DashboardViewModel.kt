@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.*
 import com.coupleos.app.data.repository.GitHubRepository
 import com.coupleos.app.security.keystore.SecureStorage
+import com.coupleos.app.sync.SyncManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -47,6 +48,7 @@ class DashboardViewModel @Inject constructor(
     private val memoryDao: MemoryDao,
     private val countdownDao: CountdownDao,
     private val gitHubRepository: GitHubRepository,
+    private val syncManager: SyncManager,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DashboardUiState())
@@ -71,6 +73,25 @@ class DashboardViewModel @Inject constructor(
     init {
         loadDashboard()
         checkConnection()
+        syncFromToken()
+    }
+
+    /**
+     * Pull all data from both tokens' gists into local storage,
+     * so the partner's data shows up automatically without visiting each screen.
+     */
+    private fun syncFromToken() {
+        viewModelScope.launch {
+            try {
+                val result = syncManager.pullAll()
+                loadDashboard()
+                if (result.error != null) {
+                    _uiState.update { it.copy(feedbackMessage = "همگام‌سازی ناقص بود: ${result.error}") }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(feedbackMessage = "خطا در همگام‌سازی: ${e.localizedMessage}") }
+            }
+        }
     }
 
     private fun loadDashboard() {
@@ -204,13 +225,16 @@ class DashboardViewModel @Inject constructor(
                 // Reload local data
                 loadDashboard()
 
-                // Try to sync from GitHub gists
-                // TODO: pull mood/memory data from partner gist
+                // Pull ALL data from both tokens' gists into local storage
+                val syncResult = syncManager.pullAll()
 
                 _uiState.update {
                     it.copy(
                         isRefreshing = false,
-                        feedbackMessage = "بروزرسانی شد ✅",
+                        feedbackMessage = if (syncResult.error == null)
+                            "بروزرسانی و همگام‌سازی از توکن انجام شد ✅"
+                        else
+                            "همگام‌سازی ناقص: ${syncResult.error}",
                     )
                 }
             } catch (e: Exception) {

@@ -35,9 +35,13 @@ class SurpriseViewModel @Inject constructor(
     init{ pull()}
     private fun pull(){ viewModelScope.launch{
         try{
-            val remote=repo.readMergedContent(GitHubRepository.LETTERS_FILE).getOrNull() ?: return@launch
-            // surprises share same file? use separate but for now same logic
+            val remote=repo.readMergedContent(GitHubRepository.SURPRISES_FILE).getOrNull() ?: return@launch
             if(remote=="[]") return@launch
+            val list=try{ json.decodeFromString<List<SurpriseSyncData>>(remote)}catch(_:Exception){ emptyList()}
+            for(i in list){
+                val exists = mine.value.any{ it.id==i.id} || forMe.value.any{ it.id==i.id}
+                if(!exists) dao.insert(SurpriseEntity(id=i.id, title=i.title, content=i.content, triggerType=i.triggerType, triggerValue=i.triggerValue, isRevealed=i.isRevealed, createdBy=i.createdBy, recipientId=i.recipientId, createdAt=i.createdAt))
+            }
         }catch(_:Exception){}
     }}
     fun create(title:String, content:String, trigger:String){
@@ -55,11 +59,14 @@ class SurpriseViewModel @Inject constructor(
             sync()
         }
     }
-    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)}}}
+    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)}}}
     private suspend fun sync(){
         try{
+            val remoteStr=repo.readMergedContent(GitHubRepository.SURPRISES_FILE).getOrNull()?:"[]"
+            val remote=try{ json.decodeFromString<List<SurpriseSyncData>>(remoteStr)}catch(_:Exception){ emptyList()}
             val local=(mine.value+forMe.value).map{ SurpriseSyncData(it.id,it.title,it.content,it.triggerType,it.triggerValue,it.isRevealed,it.createdBy,it.recipientId,it.createdAt)}
-            repo.saveFullList("surprises.json", json.encodeToString(local))
+            val merged=mutableMapOf<String, SurpriseSyncData>(); remote.forEach{ merged[it.id]=it}; local.forEach{ merged[it.id]=it}
+            repo.saveFullList(GitHubRepository.SURPRISES_FILE, json.encodeToString(merged.values.toList()))
         }catch(_:Exception){}
     }
 }

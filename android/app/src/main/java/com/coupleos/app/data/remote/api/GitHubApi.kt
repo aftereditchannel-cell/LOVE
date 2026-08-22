@@ -40,6 +40,16 @@ interface GitHubApi {
         @Header("Authorization") auth: String,
         @Path("id") id: String
     ): Response<GitHubGist>
+
+    /**
+     * Fetch the full raw content of a gist file via its raw_url.
+     * GitHub truncates `content` at ~1MB, so large files must be read here.
+     */
+    @GET
+    suspend fun getRawGistFile(
+        @Url url: String,
+        @Header("Authorization") auth: String
+    ): Response<okhttp3.ResponseBody>
 }
 
 @Serializable
@@ -65,6 +75,8 @@ data class GistFile(
     val filename: String = "",
     val content: String = "",
     val size: Int = 0,
+    val truncated: Boolean = false,
+    val raw_url: String = "",
 )
 
 @Serializable
