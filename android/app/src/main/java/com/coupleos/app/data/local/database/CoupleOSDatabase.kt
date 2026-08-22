@@ -28,7 +28,7 @@ import com.coupleos.app.data.local.entity.*
         SyncQueueEntity::class,
     ],
     version = 1,
-    exportSchema = true,
+    exportSchema = false,
 )
 abstract class CoupleOSDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
