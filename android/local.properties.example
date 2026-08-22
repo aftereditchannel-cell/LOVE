@@ -1,0 +1,14 @@
+## This file is a template for local.properties.
+## Copy this file to `local.properties` and set your Android SDK location.
+#
+# macOS:
+# sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk
+#
+# Linux:
+# sdk.dir=/home/YOUR_USERNAME/Android/Sdk
+#
+# Windows:
+# sdk.dir=C\:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk
+#
+# Optional: API backend URL override
+# API_BASE_URL=http://10.0.2.2:3000

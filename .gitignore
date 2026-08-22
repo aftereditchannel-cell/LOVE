@@ -7,7 +7,9 @@
 *.keystore
 *.jks
 keystore.properties
+!keystore.properties.example
 local.properties
+!local.properties.example
 android/app/build/
 android/build/
 android/.gradle/
