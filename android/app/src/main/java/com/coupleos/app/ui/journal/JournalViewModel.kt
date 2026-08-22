@@ -102,6 +102,7 @@ class JournalViewModel @Inject constructor(
     fun deleteEntry(id: String) {
         viewModelScope.launch {
             journalDao.softDelete(id, LocalDateTime.now().toString())
+            gitHubRepository.removeFromList(GitHubRepository.JOURNAL_FILE, id)
             syncToGist()
         }
     }

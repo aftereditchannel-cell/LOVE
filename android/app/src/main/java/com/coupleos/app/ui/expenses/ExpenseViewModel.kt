@@ -48,7 +48,7 @@ class ExpenseViewModel @Inject constructor(
             _ui.update{ it.copy(feedback="هزینه ثبت و روی توکن ذخیره شد 💰")}
         }
     }
-    fun delete(id:String){ viewModelScope.launch{ dao.delete(id); sync() }}
+    fun delete(id:String){ viewModelScope.launch{ dao.delete(id); repo.removeFromList(GitHubRepository.EXPENSES_FILE, id); sync() }}
     fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
     private suspend fun sync(){
         try{

@@ -46,13 +46,14 @@ class GitHubRepository @Inject constructor(
         const val COUNTDOWNS_FILE = "countdowns.json"
         const val QUESTIONS_FILE = "questions.json"
         const val EXPENSES_FILE = "expenses.json"
+        const val SURPRISES_FILE = "surprises.json"
         const val TIMELINE_FILE = "timeline.json"
 
         val ALL_FILES = listOf(
             SHARED_FILE, MOODS_FILE, MEMORIES_FILE, MESSAGES_FILE,
             CALENDAR_FILE, TASKS_FILE, JOURNAL_FILE, WISHLIST_FILE,
             BUCKET_FILE, LETTERS_FILE, COUNTDOWNS_FILE, QUESTIONS_FILE,
-            EXPENSES_FILE, TIMELINE_FILE
+            EXPENSES_FILE, SURPRISES_FILE, TIMELINE_FILE
         )
     }
 
@@ -269,14 +270,10 @@ class GitHubRepository @Inject constructor(
             }
             if (!replaced) merged.add(newElement)
 
-            val mergedJson = JsonArray(merged).toString()
-            saveToGist(fileName, json.encodeToString(Json.parseToJsonElement(mergedJson)))
-            // Actually just save mergedJson directly as it's already JSON string
-            // Use custom serialization: re-encode properly
             val final = JsonArray(merged).let { arr ->
                 buildString {
                     append("[")
-                    arr.forEachIndexed { idx, el -> 
+                    arr.forEachIndexed { idx, el ->
                         if (idx > 0) append(",")
                         append(json.encodeToString(el))
                     }
@@ -305,6 +302,63 @@ class GitHubRepository @Inject constructor(
     }
 
     /**
+     * Remove one item (by id) from a list file on the gists.
+     * Propagates deletions so removed items do not resurrect on the partner's phone.
+     */
+    suspend fun removeFromList(fileName: String, id: String): Result<Unit> {
+        return try {
+            val existing = readMergedContent(fileName).getOrNull() ?: return Result.success(Unit)
+            val arr = try { json.parseToJsonElement(existing).jsonArray }
+                      catch (_: Exception) { return Result.success(Unit) }
+            val filtered = arr.filter { elem ->
+                val obj = elem as? JsonObject
+                (obj?.get("id")?.jsonPrimitive?.contentOrNull) != id
+            }
+            val final = buildString {
+                append("[")
+                filtered.forEachIndexed { idx, el ->
+                    if (idx > 0) append(",")
+                    append(json.encodeToString(el))
+                }
+                append("]")
+            }
+            saveToGist(fileName, final)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Verify a token can actually read/write gists (needs `gist` scope).
+     * Writes then reads back a tiny heartbeat file inside the couple gist.
+     */
+    suspend fun verifyGistWritable(token: String, gistId: String): Result<Unit> {
+        return try {
+            val probe = "heartbeat-${System.currentTimeMillis()}"
+            val write = gitHubApi.updateGist(
+                authHeader(token),
+                gistId,
+                UpdateGistRequest(files = mapOf("heartbeat.json" to GistFileContent("\"$probe\"")))
+            )
+            if (!write.isSuccessful) {
+                val msg = if (write.code() == 403 || write.code() == 404)
+                    "توکن اجازه نوشتن روی Gist ندارد — مطمئن شو scope گزینه «gist» رو فعال کرده باشی (کد ${write.code()})"
+                else "خطا در نوشتن روی توکن (کد ${write.code()})"
+                return Result.failure(Exception(msg))
+            }
+            val read = gitHubApi.getGist(authHeader(token), gistId)
+            val content = read.body()?.files?.get("heartbeat.json")?.content
+            if (read.isSuccessful && content != null && content.contains(probe)) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("خواندن از Gist ناموفق بود (کد ${read.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("خطا در بررسی Gist: ${e.localizedMessage}"))
+        }
+    }
+
+    /**
      * Read content from a single gist file via token
      */
     private suspend fun readGistFile(token: String, gistId: String?, fileName: String): Result<String> {
@@ -320,8 +374,13 @@ class GitHubRepository @Inject constructor(
             val fullGist = gitHubApi.getGist(authHeader(token), id)
             if (!fullGist.isSuccessful) return Result.failure(Exception("get gist failed ${fullGist.code()}"))
             val file = fullGist.body()?.files?.get(fileName) ?: return Result.failure(Exception("فایل $fileName یافت نشد"))
-            // Gist API may truncate long files — content may be truncated field
-            // If truncated, we need raw_url but for now return content
+            // Gist API truncates files larger than ~1MB — fetch raw content instead.
+            if (file.truncated && file.raw_url.isNotBlank()) {
+                val raw = gitHubApi.getRawGistFile(file.raw_url, authHeader(token))
+                if (raw.isSuccessful && raw.body() != null) {
+                    return Result.success(raw.body()!!.string())
+                }
+            }
             Result.success(file.content)
         } catch (e: Exception) {
             Result.failure(e)
@@ -407,6 +466,12 @@ class GitHubRepository @Inject constructor(
             val full = gitHubApi.getGist(authHeader(token), gist.id)
             if (!full.isSuccessful) return Result.failure(Exception("get failed"))
             val file = full.body()?.files?.get(fileName) ?: return Result.failure(Exception("file $fileName not found"))
+            if (file.truncated && file.raw_url.isNotBlank()) {
+                val raw = gitHubApi.getRawGistFile(file.raw_url, authHeader(token))
+                if (raw.isSuccessful && raw.body() != null) {
+                    return Result.success(raw.body()!!.string())
+                }
+            }
             Result.success(file.content)
         } catch (e: Exception) {
             Result.failure(e)

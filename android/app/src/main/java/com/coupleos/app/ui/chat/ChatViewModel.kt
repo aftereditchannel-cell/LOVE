@@ -117,6 +117,7 @@ class ChatViewModel @Inject constructor(
     fun deleteMessage(id: String) {
         viewModelScope.launch {
             messageDao.softDelete(id, LocalDateTime.now().toString())
+            gitHubRepository.removeFromList(GitHubRepository.MESSAGES_FILE, id)
             syncToGist()
         }
     }
