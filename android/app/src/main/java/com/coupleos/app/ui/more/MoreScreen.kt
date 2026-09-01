@@ -1,94 +1,126 @@
 package com.coupleos.app.ui.more
 
-import androidx.compose.foundation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.coupleos.app.R
 import com.coupleos.app.ui.Screen
 import com.coupleos.app.ui.theme.*
 
+private data class MoreEntry(
+    val emoji: String,
+    val title: String,
+    val subtitle: String,
+    val route: String,
+    val tint: Color,
+)
+
+private val tileTints = listOf(
+    Color(0xFFFFD6E0), Color(0xFFFFE3C2), Color(0xFFC9F3DE),
+    Color(0xFFCDE8FF), Color(0xFFE8D6FF), Color(0xFFFFD9F0),
+)
+
 @Composable
 fun MoreScreen(navController: NavController) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Background)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 20.dp),
-    ) {
-        Spacer(modifier = Modifier.height(16.dp))
+    val personal = listOf(
+        MoreEntry("👤", "پروفایل", "مشخصات و عکس ما", Screen.Profile.route, tileTints[0]),
+        MoreEntry("😊", "حال روزانه", "امروز چطوری؟", Screen.Mood.route, tileTints[1]),
+        MoreEntry("📓", "دفتر خاطرات", "خصوصی و مشترک", Screen.Journal.route, tileTints[2]),
+    )
+    val world = listOf(
+        MoreEntry("📖", "داستان ما", "خط زمانی خاطرات", Screen.OurStory.route, tileTints[3]),
+        MoreEntry("📸", "عکس‌های ما", "گالری روی توکن", Screen.Photos.route, tileTints[4]),
+        MoreEntry("⭐", "لیست آرزوها", "چیزایی که دلمون می‌خواد", Screen.Wishlist.route, tileTints[5]),
+        MoreEntry("🎯", "لیست خواسته‌ها", "کارایی که با هم انجام بدیم", Screen.BucketList.route, tileTints[0]),
+        MoreEntry("⏱️", "شمارش معکوس", "روزهای مونده", Screen.Countdown.route, tileTints[1]),
+    )
+    val special = listOf(
+        MoreEntry("💌", "نامه‌های عاشقانه", "زمان‌دار و مخفی", Screen.Letters.route, tileTints[2]),
+        MoreEntry("🎁", "سورپرایزها", "برای همدیگه", Screen.Surprises.route, tileTints[3]),
+        MoreEntry("🍝", "برنامه قرار", "ایده‌های دونفره", Screen.DatePlanner.route, tileTints[4]),
+        MoreEntry("❓", "سؤال روزانه", "جواب دوتایی", Screen.Questions.route, tileTints[5]),
+        MoreEntry("💞", "رابطه ما", "حس و حال دونفره", Screen.Relationship.route, tileTints[0]),
+        MoreEntry("🧊", "یخچال عشق", "نوت‌های چسبونکی", Screen.LoveNotes.route, tileTints[1]),
+        MoreEntry("💋", "بوس‌شمار", "بوس لمسی دونفره", Screen.Kisses.route, tileTints[2]),
+        MoreEntry("🐰", "حیوون دونفره", "غذا بده و نوازش کن", Screen.Pet.route, tileTints[3]),
+        MoreEntry("🫙", "شیشه تعریف", "تعریف‌های قشنگ", Screen.Jar.route, tileTints[4]),
+        MoreEntry("🥠", "فال عشق", "فال امروز", Screen.Fortune.route, tileTints[5]),
+        MoreEntry("🎮", "بازی دونفره", "کی منو بهتر می‌شناسه", Screen.Games.route, tileTints[0]),
+        MoreEntry("🔥", "عادت‌های دونفره", "استریک بسازید", Screen.Habits.route, tileTints[1]),
+        MoreEntry("🎵", "آهنگ ما", "پلی‌لیست دونفره", Screen.Music.route, tileTints[2]),
+    )
+    val manage = listOf(
+        MoreEntry("✅", "کارها", "کارهای دونفره", Screen.Tasks.route, tileTints[3]),
+        MoreEntry("💰", "هزینه‌ها", "خرج‌های مشترک", Screen.Expenses.route, tileTints[4]),
+    )
+    val tools = listOf(
+        MoreEntry("🤖", "دستیار هوشمند", "پیشنهاد کادو و قرار", Screen.AI.route, tileTints[5]),
+        MoreEntry("🔍", "جستجو", "توی دنیای ما", Screen.Search.route, tileTints[0]),
+        MoreEntry("🎨", "کاستوم‌سازی", "تم و رنگ‌ها", Screen.Customize.route, tileTints[1]),
+        MoreEntry("⚙️", "تنظیمات", "امنیت و همگام‌سازی", Screen.Settings.route, tileTints[2]),
+    )
 
-        Text(
-            text = stringResource(R.string.nav_more),
-            style = MaterialTheme.typography.headlineMedium,
-            color = TextPrimary,
-        )
-        Text("همه قابلیت‌ها اینجا فعاله — دیتا روی توکن ذخیره میشه ❤️", style=MaterialTheme.typography.bodySmall, color=TextTertiary)
+    CuteBackground {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp),
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Text(text = "💕", fontSize = 40.sp)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "دنیای کوچیک ما",
+                style = MaterialTheme.typography.headlineMedium,
+                color = TextPrimary,
+            )
+            Text(
+                text = "همه قابلیت‌ها فعاله — دیتا واقعاً روی توکن گیت ذخیره می‌شه ❤️",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextTertiary,
+            )
 
-        // Section: Personal
-        SectionTitle("شخصی")
-        MoreMenuItem(Icons.Outlined.Person, stringResource(R.string.more_profile)) { navController.navigate(Screen.Profile.route) }
-        MoreMenuItem(Icons.Outlined.Mood, "حال روزانه") { navController.navigate(Screen.Mood.route) }
-        MoreMenuItem(Icons.Outlined.Book, "دفتر خاطرات") { navController.navigate(Screen.Journal.route) }
+            Spacer(modifier = Modifier.height(20.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+            SectionTitle("👤 شخصی")
+            personal.forEach { e -> MoreTile(e) { navController.navigate(e.route) } }
 
-        // Section: Together
-        SectionTitle("دنیای ما")
-        MoreMenuItem(Icons.Outlined.AutoStories, stringResource(R.string.more_our_story)) { navController.navigate(Screen.OurStory.route) }
-        MoreMenuItem(Icons.Outlined.PhotoCamera, stringResource(R.string.more_photos)) { navController.navigate(Screen.Photos.route) }
-        MoreMenuItem(Icons.Outlined.Star, stringResource(R.string.more_wishlist)) { navController.navigate(Screen.Wishlist.route) }
-        MoreMenuItem(Icons.Outlined.Checklist, stringResource(R.string.more_bucket_list)) { navController.navigate(Screen.BucketList.route) }
-        MoreMenuItem(Icons.Outlined.Timer, stringResource(R.string.more_countdown)) { navController.navigate(Screen.Countdown.route) }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+            SectionTitle("🌍 دنیای ما")
+            world.forEach { e -> MoreTile(e) { navController.navigate(e.route) } }
 
-        // Section: Special
-        SectionTitle("ویژه")
-        MoreMenuItem(Icons.Outlined.Email, stringResource(R.string.more_love_letters)) { navController.navigate(Screen.Letters.route) }
-        MoreMenuItem(Icons.Outlined.CardGiftcard, stringResource(R.string.more_surprises)) { navController.navigate(Screen.Surprises.route) }
-        MoreMenuItem(Icons.Outlined.Restaurant, stringResource(R.string.more_date_planner)) { navController.navigate(Screen.DatePlanner.route) }
-        MoreMenuItem(Icons.Outlined.QuestionAnswer, stringResource(R.string.more_questions)) { navController.navigate(Screen.Questions.route) }
-        MoreMenuItem(Icons.Outlined.Favorite, stringResource(R.string.more_relationship)) { navController.navigate(Screen.Relationship.route) }
-        MoreMenuItem(Icons.Outlined.Star, "یخچال عشق") { navController.navigate(Screen.LoveNotes.route) }
-        MoreMenuItem(Icons.Outlined.FavoriteBorder, "بوس‌شمار") { navController.navigate(Screen.Kisses.route) }
-        MoreMenuItem(Icons.Outlined.Mood, "حیوون دونفره") { navController.navigate(Screen.Pet.route) }
-        MoreMenuItem(Icons.Outlined.Email, "شیشه تعریف") { navController.navigate(Screen.Jar.route) }
-        MoreMenuItem(Icons.Outlined.Favorite, "فال عشق") { navController.navigate(Screen.Fortune.route) }
-        MoreMenuItem(Icons.Outlined.SmartToy, "بازی دونفره") { navController.navigate(Screen.Games.route) }
-        MoreMenuItem(Icons.Outlined.CheckCircle, "عادت‌های دونفره") { navController.navigate(Screen.Habits.route) }
-        MoreMenuItem(Icons.Outlined.Star, "آهنگ ما") { navController.navigate(Screen.Music.route) }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+            SectionTitle("💝 ویژه")
+            special.forEach { e -> MoreTile(e) { navController.navigate(e.route) } }
 
-        // Section: Manage
-        SectionTitle("مدیریت")
-        MoreMenuItem(Icons.Outlined.CheckCircle, stringResource(R.string.more_tasks)) { navController.navigate(Screen.Tasks.route) }
-        MoreMenuItem(Icons.Outlined.AccountBalanceWallet, stringResource(R.string.more_expenses)) { navController.navigate(Screen.Expenses.route) }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(16.dp))
+            SectionTitle("🧰 مدیریت")
+            manage.forEach { e -> MoreTile(e) { navController.navigate(e.route) } }
 
-        // Section: Tools
-        SectionTitle("ابزار")
-        MoreMenuItem(Icons.Outlined.SmartToy, stringResource(R.string.more_ai)) { navController.navigate(Screen.AI.route) }
-        MoreMenuItem(Icons.Outlined.Search, "جستجو") { navController.navigate(Screen.Search.route) }
-        MoreMenuItem(Icons.Outlined.Settings, "کاستوم‌سازی") { navController.navigate(Screen.Customize.route) }
-        MoreMenuItem(Icons.Outlined.Settings, stringResource(R.string.more_settings)) { navController.navigate(Screen.Settings.route) }
+            Spacer(modifier = Modifier.height(16.dp))
 
-        Spacer(modifier = Modifier.height(80.dp))
+            SectionTitle("🛠 ابزار")
+            tools.forEach { e -> MoreTile(e) { navController.navigate(e.route) } }
+
+            Spacer(modifier = Modifier.height(80.dp))
+        }
     }
 }
 
@@ -96,40 +128,42 @@ fun MoreScreen(navController: NavController) {
 private fun SectionTitle(title: String) {
     Text(
         text = title,
-        style = MaterialTheme.typography.labelMedium,
-        color = TextTertiary,
+        style = MaterialTheme.typography.labelLarge,
+        color = TextSecondary,
         modifier = Modifier.padding(vertical = 8.dp),
     )
 }
 
 @Composable
-private fun MoreMenuItem(
-    icon: ImageVector,
-    title: String,
-    onClick: () -> Unit,
-) {
+private fun MoreTile(entry: MoreEntry, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(Surface.copy(alpha = 0.9f), SurfaceElevated.copy(alpha = 0.7f))
+                )
+            )
             .clickable(onClick = onClick)
-            .padding(vertical = 14.dp, horizontal = 4.dp),
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            tint = Primary,
-            modifier = Modifier.size(22.dp),
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyLarge,
-            color = TextPrimary,
-        )
-        Spacer(Modifier.weight(1f))
-        Text("›", style=MaterialTheme.typography.bodyLarge, color=TextTertiary)
+        Box(
+            modifier = Modifier
+                .size(46.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(entry.tint.copy(alpha = 0.25f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = entry.emoji, fontSize = 22.sp)
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = entry.title, style = MaterialTheme.typography.bodyLarge, color = TextPrimary)
+            Text(text = entry.subtitle, style = MaterialTheme.typography.labelSmall, color = TextTertiary)
+        }
+        Text(text = "›", style = MaterialTheme.typography.bodyLarge, color = TextTertiary)
     }
-    HorizontalDivider(color = DividerColor, thickness = 0.5.dp)
+    Spacer(modifier = Modifier.height(8.dp))
 }

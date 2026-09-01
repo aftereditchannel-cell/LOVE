@@ -1,17 +1,24 @@
 package com.coupleos.app.ui.extras
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.coupleos.app.ui.theme.*
+import kotlinx.coroutines.delay
 
 private val fortunes = listOf(
     "🌸 امروز یک بوس اضافه، حال هر دو را عوض می‌کند.",
@@ -33,13 +40,81 @@ private val pets = listOf("🐰" to "bunny", "🐱" to "kitten", "🐥" to "chic
 @Composable
 fun KissesScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
-    Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("بوس‌شمار 💋", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }) { pad ->
-        Column(Modifier.padding(pad).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("💋", fontSize = 64.sp)
-            Text("فرستادی ${bundle.kissesSent} · گرفتی ${bundle.kissesReceived}", color = TextSecondary)
-            Button(onClick = { vm.extra.sendKiss() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Primary)) { Text("یک بوس بفرست 💋") }
-            Button(onClick = { vm.extra.receiveKiss() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = Primary)) { Text("شبیه‌سازی بوس برگشتی") }
+    var meHolding by remember { mutableStateOf(false) }
+    var partnerHolding by remember { mutableStateOf(false) }
+    var burst by remember { mutableStateOf(false) }
+
+    LaunchedEffect(meHolding, partnerHolding) {
+        if (meHolding && partnerHolding) {
+            burst = true
+            vm.extra.sendKiss()
+            delay(1000)
+            burst = false
         }
+    }
+
+    Scaffold(containerColor = Color.Transparent, topBar = { TopAppBar(title = { Text("بوس‌شمار 💋", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }) { pad ->
+        CuteBackground {
+            Column(
+                Modifier.fillMaxSize().padding(pad).padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                Spacer(Modifier.height(12.dp))
+                Text(if (burst) "💖💋💕💗💋💖" else "💋", fontSize = 56.sp)
+                Text("انگشتتون رو هم‌زمان روی قلب‌ها نگه دارید", color = TextSecondary)
+                Text("بوس لمسی — مثل اپ Between", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    HoldHeart("من", meHolding) { meHolding = it }
+                    HoldHeart("تو", partnerHolding) { partnerHolding = it }
+                }
+                if (burst) {
+                    Text("بوسه گرفتین! 💋", color = Primary, style = MaterialTheme.typography.titleMedium)
+                }
+                Card(colors = CardDefaults.cardColors(containerColor = Surface.copy(alpha = 0.85f)), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
+                    Row(Modifier.padding(18.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("${bundle.kissesSent}", color = Primary, style = MaterialTheme.typography.titleLarge)
+                            Text("فرستادی", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("${bundle.kissesReceived}", color = Primary, style = MaterialTheme.typography.titleLarge)
+                            Text("گرفتی", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("${bundle.kissesSent + bundle.kissesReceived}", color = Primary, style = MaterialTheme.typography.titleLarge)
+                            Text("کل بوسه‌ها", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+                TextButton(onClick = { vm.extra.receiveKiss() }) { Text("بوس برگشتی رو شبیه‌سازی کن") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HoldHeart(label: String, active: Boolean, onHold: (Boolean) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(130.dp)
+                .clip(CircleShape)
+                .background(if (active) Primary else SurfaceElevated)
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onPress = {
+                            onHold(true)
+                            try { tryAwaitRelease() } finally { onHold(false) }
+                        }
+                    )
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(if (active) "💋" else "❤️", fontSize = 52.sp)
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(if (active) "نگه داشتی 💕" else label, color = if (active) Primary else TextSecondary)
     }
 }
 
