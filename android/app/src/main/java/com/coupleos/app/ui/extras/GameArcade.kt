@@ -158,14 +158,14 @@ private fun MemoryPane(extra: ExtraStore, modifier: Modifier) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         for (col in 0 until 4) {
                             val i = row * 4 + col
-                            val c = g.memCards.getOrNull(i) ?: continue
-                            val open = c.flipped || c.matched
+                            val c = g.memCards.getOrNull(i)
+                            val open = c != null && (c.flipped || c.matched)
                             Button(
                                 onClick = { extra.flipMemory(i) },
                                 modifier = Modifier.weight(1f).aspectRatio(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = if (c.matched) PrimaryContainer else Surface, contentColor = TextPrimary),
+                                colors = ButtonDefaults.buttonColors(containerColor = if (c?.matched == true) PrimaryContainer else Surface, contentColor = TextPrimary),
                                 shape = RoundedCornerShape(16.dp),
-                            ) { Text(if (open) c.emoji else "♡", fontSize = 22.sp) }
+                            ) { Text(if (open) (c?.emoji ?: "♡") else "♡", fontSize = 22.sp) }
                         }
                     }
                 }
@@ -277,7 +277,7 @@ private fun RpsPane(extra: ExtraStore, modifier: Modifier) {
                     onClick = { extra.lockRps("me", id) },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = if (g.rpsMeChoice == id) PrimaryContainer else Surface, contentColor = TextPrimary),
-                ) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text(emoji, fontSize = 28.sp); Text(name, fontSize = 12.sp) } }
+                ) { Text("$emoji\n$name", textAlign = TextAlign.Center) }
             }
         }
         Text("انتخاب پارتنر", color = TextTertiary)
@@ -287,7 +287,7 @@ private fun RpsPane(extra: ExtraStore, modifier: Modifier) {
                     onClick = { extra.lockRps("partner", id) },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.buttonColors(containerColor = if (g.rpsPartnerChoice == id) PrimaryContainer else Surface, contentColor = TextPrimary),
-                ) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Text(if (g.rpsResult.isNotEmpty()) emoji else "❔", fontSize = 28.sp); Text(name, fontSize = 12.sp) } }
+                ) { Text("${if (g.rpsResult.isNotEmpty()) emoji else "❔"}\n$name", textAlign = TextAlign.Center) }
             }
         }
         Button(onClick = { extra.startRps() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Primary)) { Text("دور جدید") }
