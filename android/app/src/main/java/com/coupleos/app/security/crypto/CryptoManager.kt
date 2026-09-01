@@ -24,10 +24,15 @@ class CryptoManager @Inject constructor() {
         private const val GCM_TAG_LENGTH = 128
     }
 
-    private val keyStore = KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+    private val keyStore: KeyStore? = try {
+        KeyStore.getInstance(KEYSTORE_PROVIDER).apply { load(null) }
+    } catch (_: Throwable) {
+        null
+    }
 
     private fun getOrCreateKey(): SecretKey {
-        val existingKey = keyStore.getEntry(ENCRYPTION_KEY_ALIAS, null)
+        val store = keyStore ?: throw IllegalStateException("AndroidKeyStore unavailable")
+        val existingKey = store.getEntry(ENCRYPTION_KEY_ALIAS, null)
         if (existingKey is KeyStore.SecretKeyEntry) {
             return existingKey.secretKey
         }

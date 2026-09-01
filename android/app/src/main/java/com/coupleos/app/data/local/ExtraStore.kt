@@ -285,15 +285,19 @@ class ExtraStore @Inject constructor(
     fun bumpTruth() = savePlay(bump(play()))
 
     fun exportPlayCode(): String {
-        val g = play()
-        val share = PlayShare(
-            ttt = if (g.tttStarted) TttShare(g.tttBoard, g.tttTurn, g.tttMode, g.tttWinner.ifBlank { null }) else null,
-            rps = RpsShare(g.rpsMeChoice.ifBlank { null }, g.rpsPartnerChoice.ifBlank { null }, g.rpsResult.ifBlank { null }),
-            quiz = QuizShare(g.quizIndex, g.quizMy.takeIf { it >= 0 }, g.quizPartner.takeIf { it >= 0 }, g.quizRevealed, g.quizMatches),
-            duo = DuoShare(g.tttMe, g.tttPartner, g.rpsMe, g.rpsPartner),
-        )
-        val raw = json.encodeToString(PlayShare.serializer(), share)
-        return Base64.encodeToString(raw.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        return try {
+            val g = play()
+            val share = PlayShare(
+                ttt = if (g.tttStarted) TttShare(g.tttBoard, g.tttTurn, g.tttMode, g.tttWinner.ifBlank { null }) else null,
+                rps = RpsShare(g.rpsMeChoice.ifBlank { null }, g.rpsPartnerChoice.ifBlank { null }, g.rpsResult.ifBlank { null }),
+                quiz = QuizShare(g.quizIndex, g.quizMy.takeIf { it >= 0 }, g.quizPartner.takeIf { it >= 0 }, g.quizRevealed, g.quizMatches),
+                duo = DuoShare(g.tttMe, g.tttPartner, g.rpsMe, g.rpsPartner),
+            )
+            val raw = json.encodeToString(PlayShare.serializer(), share)
+            Base64.encodeToString(raw.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        } catch (_: Exception) {
+            ""
+        }
     }
 
     fun importPlayCode(code: String): Boolean {

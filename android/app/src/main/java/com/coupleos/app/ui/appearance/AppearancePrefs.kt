@@ -26,16 +26,28 @@ class AppearancePrefs @Inject constructor(
     private val _state = MutableStateFlow(read())
     val state: StateFlow<AppearanceState> = _state
 
-    private fun read(): AppearanceState = AppearanceState(
-        theme = prefs.getString("theme", "rose-glass") ?: "rose-glass",
-        accent = prefs.getLong("accent", 0xFFFF8AA0L),
-        glass = prefs.getInt("glass", 22),
-        particles = prefs.getBoolean("particles", true),
-        cuteStickers = prefs.getBoolean("cute", true),
-        fontScale = prefs.getFloat("font", 1f),
-        radius = prefs.getInt("radius", 22),
-        coupleTitle = prefs.getString("title", "دنیای کوچیک ما") ?: "دنیای کوچیک ما",
-    )
+    private fun read(): AppearanceState = try {
+        AppearanceState(
+            theme = prefs.getString("theme", "rose-glass") ?: "rose-glass",
+            accent = try {
+                prefs.getLong("accent", 0xFFFF8AA0L)
+            } catch (_: ClassCastException) {
+                (prefs.getInt("accent", 0xFFFF8AA0.toInt()).toLong() and 0xFFFFFFFFL)
+            },
+            glass = prefs.getInt("glass", 22),
+            particles = prefs.getBoolean("particles", true),
+            cuteStickers = prefs.getBoolean("cute", true),
+            fontScale = try {
+                prefs.getFloat("font", 1f)
+            } catch (_: ClassCastException) {
+                1f
+            },
+            radius = prefs.getInt("radius", 22),
+            coupleTitle = prefs.getString("title", "دنیای کوچیک ما") ?: "دنیای کوچیک ما",
+        )
+    } catch (_: Exception) {
+        AppearanceState()
+    }
 
     fun update(patch: AppearanceState) {
         prefs.edit()

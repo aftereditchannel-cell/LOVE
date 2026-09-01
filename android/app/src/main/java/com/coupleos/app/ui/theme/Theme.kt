@@ -17,7 +17,11 @@ fun CoupleOSTheme(
     appearance: AppearanceState = AppearanceState(),
     content: @Composable () -> Unit
 ) {
-    val palette = couplePalette(appearance.theme, appearance.accent)
+    val palette = try {
+        couplePalette(appearance.theme, appearance.accent)
+    } catch (_: Throwable) {
+        couplePalette("rose-glass", 0xFFFF8AA0L)
+    }
     val scheme = darkColorScheme(
         primary = palette.primary,
         onPrimary = Color(0xFFF0EDED),

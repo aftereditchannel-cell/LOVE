@@ -22,8 +22,18 @@ fun Modifier.glass(
         .border(1.dp, Color.White.copy(alpha = 0.16f), shape)
 }
 
+fun argbColor(argb: Long): Color {
+    val v = argb.toInt()
+    return Color(
+        alpha = ((v ushr 24) and 0xFF) / 255f,
+        red = ((v ushr 16) and 0xFF) / 255f,
+        green = ((v ushr 8) and 0xFF) / 255f,
+        blue = (v and 0xFF) / 255f,
+    )
+}
+
 fun couplePalette(theme: String, accent: Long): CouplePalette {
-    val a = Color(accent)
+    val a = argbColor(accent)
     return when (theme) {
         "sakura" -> CouplePalette(
             background = Color(0xFF1A0D14),

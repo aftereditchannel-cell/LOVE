@@ -21,6 +21,15 @@ import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.coupleos.app.ui.theme.Primary
 
+private fun isUserDrag(source: NestedScrollSource): Boolean {
+    return try {
+        val name = source.toString()
+        name.contains("Drag", ignoreCase = true) || name.contains("UserInput", ignoreCase = true)
+    } catch (_: Throwable) {
+        true
+    }
+}
+
 @Composable
 fun CouplePullRefresh(
     refreshing: Boolean,
@@ -33,7 +42,7 @@ fun CouplePullRefresh(
     val connection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.Drag && available.y < 0f && pull > 0f) {
+                if (isUserDrag(source) && available.y < 0f && pull > 0f) {
                     val consumed = minOf(-available.y, pull)
                     pull -= consumed
                     return Offset(0f, -consumed)
@@ -46,7 +55,7 @@ fun CouplePullRefresh(
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                if (source == NestedScrollSource.Drag && available.y > 0f) {
+                if (isUserDrag(source) && available.y > 0f) {
                     pull += available.y
                     return Offset(0f, available.y)
                 }
