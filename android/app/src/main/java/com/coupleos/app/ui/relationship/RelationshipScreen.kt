@@ -20,7 +20,7 @@ fun RelationshipScreen(vm: RelationshipViewModel = hiltViewModel()){
                 Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=Surface), shape=RoundedCornerShape(16.dp)){
                     Column(Modifier.padding(16.dp)){
                         Text("امتیاز کلی: ${String.format("%.1f", ui.average)}/5", style=MaterialTheme.typography.titleMedium, color=Primary)
-                        LinearProgressIndicator(progress={ ui.average/5f}, modifier=Modifier.fillMaxWidth().height(8.dp), color=Primary, trackColor=SurfaceElevated)
+                        LinearProgressIndicator(progress=ui.average/5f, modifier=Modifier.fillMaxWidth().height(8.dp), color=Primary, trackColor=SurfaceElevated)
                         if(ui.feedback!=null){ Spacer(Modifier.height(8.dp)); Text(ui.feedback!!, color=Success, style=MaterialTheme.typography.bodySmall)}
                     }
                 }

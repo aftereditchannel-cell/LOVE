@@ -14,7 +14,11 @@ class CoupleOSApplication : Application(), Configuration.Provider {
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
-            .setWorkerFactory(workerFactory)
+            .apply {
+                if (::workerFactory.isInitialized) {
+                    setWorkerFactory(workerFactory)
+                }
+            }
             .setMinimumLoggingLevel(android.util.Log.INFO)
             .build()
 }

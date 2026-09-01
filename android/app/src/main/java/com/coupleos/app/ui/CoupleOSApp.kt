@@ -21,15 +21,26 @@ import com.coupleos.app.ui.bucket.BucketScreen
 import com.coupleos.app.ui.calendar.CalendarScreen
 import com.coupleos.app.ui.chat.ChatScreen
 import com.coupleos.app.ui.countdown.CountdownScreen
+import com.coupleos.app.ui.customize.CustomizeScreen
 import com.coupleos.app.ui.dashboard.DashboardScreen
 import com.coupleos.app.ui.expenses.ExpensesScreen
+import com.coupleos.app.ui.extras.DatePlannerScreen
+import com.coupleos.app.ui.extras.FortuneScreen
+import com.coupleos.app.ui.extras.GamesScreen
+import com.coupleos.app.ui.extras.HabitsScreen
+import com.coupleos.app.ui.extras.JarScreen
+import com.coupleos.app.ui.extras.KissesScreen
+import com.coupleos.app.ui.extras.LoveNotesScreen
+import com.coupleos.app.ui.extras.MusicScreen
+import com.coupleos.app.ui.extras.OurStoryScreen
+import com.coupleos.app.ui.extras.PetScreen
+import com.coupleos.app.ui.extras.PhotosGalleryScreen
 import com.coupleos.app.ui.journal.JournalScreen
 import com.coupleos.app.ui.letters.LettersScreen
 import com.coupleos.app.ui.lock.LockScreen
 import com.coupleos.app.ui.memories.MemoriesScreen
 import com.coupleos.app.ui.mood.MoodScreen
 import com.coupleos.app.ui.more.MoreScreen
-import com.coupleos.app.ui.photos.PhotosScreen
 import com.coupleos.app.ui.profile.ProfileScreen
 import com.coupleos.app.ui.questions.QuestionsScreen
 import com.coupleos.app.ui.relationship.RelationshipScreen
@@ -69,6 +80,15 @@ sealed class Screen(val route: String) {
     data object Settings : Screen("settings")
     data object Search : Screen("search")
     data object AI : Screen("ai")
+    data object Customize : Screen("customize")
+    data object Games : Screen("games")
+    data object LoveNotes : Screen("love_notes")
+    data object Habits : Screen("habits")
+    data object Music : Screen("music")
+    data object Kisses : Screen("kisses")
+    data object Pet : Screen("pet")
+    data object Jar : Screen("jar")
+    data object Fortune : Screen("fortune")
 }
 
 data class BottomNavItem(
@@ -189,12 +209,21 @@ fun MainContent(navController: NavHostController) {
             composable(Screen.Expenses.route) { ExpensesScreen() }
             composable(Screen.Relationship.route) { RelationshipScreen() }
             composable(Screen.Profile.route) { ProfileScreen() }
-            composable(Screen.OurStory.route) { ProfileScreen() }
-            composable(Screen.Photos.route) { PhotosScreen() }
-            composable(Screen.Settings.route) { SettingsScreen() }
-            composable(Screen.Search.route) { SearchScreen() }
+            composable(Screen.OurStory.route) { OurStoryScreen() }
+            composable(Screen.Photos.route) { PhotosGalleryScreen() }
+            composable(Screen.Settings.route) { SettingsScreen(onCustomize = { navController.navigate(Screen.Customize.route) }) }
+            composable(Screen.Search.route) { SearchScreen(onOpen = { navController.navigate(it) }) }
             composable(Screen.AI.route) { AIScreen() }
-            composable(Screen.DatePlanner.route) { CountdownScreen() }
+            composable(Screen.DatePlanner.route) { DatePlannerScreen() }
+            composable(Screen.Customize.route) { CustomizeScreen(onBack = { navController.popBackStack() }) }
+            composable(Screen.Games.route) { GamesScreen() }
+            composable(Screen.LoveNotes.route) { LoveNotesScreen() }
+            composable(Screen.Habits.route) { HabitsScreen() }
+            composable(Screen.Music.route) { MusicScreen() }
+            composable(Screen.Kisses.route) { KissesScreen() }
+            composable(Screen.Pet.route) { PetScreen() }
+            composable(Screen.Jar.route) { JarScreen() }
+            composable(Screen.Fortune.route) { FortuneScreen() }
         }
     }
 }

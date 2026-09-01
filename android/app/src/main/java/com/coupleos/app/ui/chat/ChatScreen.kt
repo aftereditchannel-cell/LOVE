@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.coupleos.app.R
 import com.coupleos.app.data.local.entity.MessageEntity
+import com.coupleos.app.ui.components.CouplePullRefresh
 import com.coupleos.app.ui.theme.*
 
 @Composable
@@ -58,40 +59,42 @@ fun ChatScreen(
             }
         }
 
-        // Messages
-        if (messages.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "💬", fontSize = 48.sp)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = stringResource(R.string.chat_empty),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextTertiary,
-                    )
+        CouplePullRefresh(
+            refreshing = uiState.isRefreshing,
+            onRefresh = { viewModel.refresh() },
+            modifier = Modifier.weight(1f),
+        ) {
+            if (messages.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(text = "💬", fontSize = 48.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = stringResource(R.string.chat_empty),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextTertiary,
+                        )
+                    }
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp),
-                state = listState,
-                reverseLayout = true,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 12.dp),
-            ) {
-                items(messages, key = { it.id }) { message ->
-                    ChatBubble(
-                        message = message,
-                        isMine = message.senderId == uiState.currentUserId,
-                    )
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp),
+                    state = listState,
+                    reverseLayout = true,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp),
+                ) {
+                    items(messages, key = { it.id }) { message ->
+                        ChatBubble(
+                            message = message,
+                            isMine = message.senderId == uiState.currentUserId,
+                        )
+                    }
                 }
             }
         }

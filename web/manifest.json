@@ -1,0 +1,13 @@
+{
+  "name": "دنیای کوچیک ما",
+  "short_name": "Couple OS",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#14080e",
+  "theme_color": "#ff8aa0",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "512x512", "type": "image/svg+xml" }
+  ]
+}

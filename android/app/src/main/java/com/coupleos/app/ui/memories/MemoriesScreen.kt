@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.coupleos.app.data.local.entity.MemoryEntity
+import com.coupleos.app.ui.components.CouplePullRefresh
 import com.coupleos.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,10 +57,10 @@ fun MemoriesScreen(
             ) { Icon(Icons.Default.Add, "Add memory") }
         },
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+        CouplePullRefresh(
+            refreshing = uiState.isRefreshing,
+            onRefresh = { viewModel.refresh() },
+            modifier = Modifier.padding(padding),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 Text(

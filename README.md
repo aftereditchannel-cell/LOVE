@@ -126,6 +126,16 @@ couple-os/
 - Node.js 18+
 - PostgreSQL (or Supabase account)
 
+### Web preview (all features)
+
+```bash
+cd web
+node server.js
+# open http://localhost:4173
+```
+
+ورود آزمایشی → PIN چهار رقمی → اثر انگشت → خانه‌. صفحه را پایین بکشید تا داده‌ها بازخوانی شوند. از «بیشتر → کاستوم‌سازی» تم شیشه‌ای را عوض کنید.
+
 ### Backend Setup
 
 ```bash
@@ -195,14 +205,25 @@ cd android
 | Backend API | ✅ |
 | WebSocket | ✅ |
 | Sync Engine | ✅ |
-| Tasks | 🚧 |
-| Wishlist | 🚧 |
-| Bucket List | 🚧 |
-| Love Letters | 🚧 |
-| Surprises | 🚧 |
+| Tasks | ✅ |
+| Wishlist | ✅ |
+| Bucket List | ✅ |
+| Love Letters | ✅ |
+| Surprises | ✅ |
+| Photos gallery | ✅ |
+| Search | ✅ |
+| Date planner | ✅ |
+| Love fridge notes | ✅ |
+| Couple games | ✅ |
+| Habits | ✅ |
+| Playlist | ✅ |
+| Pull to refresh | ✅ |
+| Glass UI + customization | ✅ |
+| Fingerprint / Biometric | ✅ |
+| Web PWA | ✅ |
 | Google Drive | 🚧 |
-| GitHub Backup | 🚧 |
-| AI Assistant | 🚧 |
+| GitHub Backup | ✅ |
+| AI Assistant | ✅ |
 
 ---
 

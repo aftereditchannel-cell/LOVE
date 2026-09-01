@@ -107,6 +107,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.4")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
     implementation("androidx.activity:activity-compose:1.9.1")
+    implementation("androidx.fragment:fragment-ktx:1.8.2")
+    implementation("androidx.appcompat:appcompat:1.7.0")
 
     // Compose BOM
     implementation(platform("androidx.compose:compose-bom:2024.08.00"))
@@ -136,7 +138,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     // Biometric
-    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // DataStore (encrypted preferences)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
