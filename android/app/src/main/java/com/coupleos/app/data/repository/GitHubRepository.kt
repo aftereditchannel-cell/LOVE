@@ -48,6 +48,8 @@ class GitHubRepository @Inject constructor(
         const val EXPENSES_FILE = "expenses.json"
         const val SURPRISES_FILE = "surprises.json"
         const val TIMELINE_FILE = "timeline.json"
+        const val EXTRAS_FILE = "extras.json"
+        const val PHOTOS_FILE = "photos.json"
 
         val ALL_FILES = listOf(
             SHARED_FILE, MOODS_FILE, MEMORIES_FILE, MESSAGES_FILE,
@@ -455,6 +457,30 @@ class GitHubRepository @Inject constructor(
             // Fallback to whichever succeeded
             Result.success(myContent ?: partnerContent ?: "[]")
         }
+    }
+
+    /**
+     * Read raw (non-array) content from the gists — e.g. the extras bundle.
+     * Since every write dual-writes to both gists, the newest copy lives on both,
+     * so we return the first successful read (my gist first, partner as fallback).
+     */
+    suspend fun readRawContent(fileName: String): Result<String> {
+        val myToken = secureStorage.getPersonalToken()
+        val partnerToken = secureStorage.getPartnerToken()
+        val myGistId = secureStorage.getMyGistId()
+        val partnerGistId = secureStorage.getPartnerGistId()
+
+        if (myToken != null) {
+            val result = if (myGistId != null) readGistFile(myToken, myGistId, fileName)
+                         else readGistFileViaListing(myToken, fileName)
+            if (result.isSuccess) return result
+        }
+        if (partnerToken != null) {
+            val result = if (partnerGistId != null) readGistFile(partnerToken, partnerGistId, fileName)
+                         else readGistFileViaListing(partnerToken, fileName)
+            if (result.isSuccess) return result
+        }
+        return Result.failure(Exception("هیچ داده‌ای یافت نشد"))
     }
 
     private suspend fun readGistFileViaListing(token: String, fileName: String): Result<String> {

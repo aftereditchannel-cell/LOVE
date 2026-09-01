@@ -1,8 +1,15 @@
 package com.coupleos.app.ui.extras
 
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -14,11 +21,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -28,6 +40,8 @@ import com.coupleos.app.data.local.ExtraStore
 import com.coupleos.app.data.local.dao.MemoryDao
 import com.coupleos.app.ui.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
@@ -169,16 +183,28 @@ fun GamesScreen(vm: ExtraViewModel = hiltViewModel()) {
 @Composable
 fun PhotosGalleryScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
-        if (uri != null) vm.extra.addPhoto(uri.toString(), "عکس")
+    val context = LocalContext.current
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            } catch (_: Throwable) {
+                // Some providers don't support persistable permissions — the base64 copy still saves.
+            }
+            val data = downscaleToBase64(context, uri)
+            vm.extra.addPhoto(uri.toString(), "عکس", data ?: "")
+        }
     }
-    Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("عکس‌های ما 📸", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }, floatingActionButton = { FloatingActionButton(onClick = { picker.launch("image/*") }, containerColor = Primary) { Icon(Icons.Default.Add, null, tint = OnPrimary) } }) { pad ->
+    Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("عکس‌های ما 📸", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }, floatingActionButton = { FloatingActionButton(onClick = { picker.launch(arrayOf("image/*")) }, containerColor = Primary) { Icon(Icons.Default.Add, null, tint = OnPrimary) } }) { pad ->
         val photos = bundle.photos
         if (photos.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("📸", fontSize = 48.sp)
-                    Text("گالری خالیه — عکس اضافه کن یا از خاطرات ثبت کن", color = TextTertiary)
+                    Spacer(Modifier.height(8.dp))
+                    Text("گالری خالیه — عکس اضافه کن ❤️", color = TextTertiary)
+                    Spacer(Modifier.height(4.dp))
+                    Text("عکس‌ها روی توکن گیت ذخیره میشن", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
                 }
             }
         } else {
@@ -189,10 +215,67 @@ fun PhotosGalleryScreen(vm: ExtraViewModel = hiltViewModel()) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(photos, key = { it.id }) { p ->
-                    AsyncImage(model = p.src, contentDescription = p.title, modifier = Modifier.aspectRatio(1f), contentScale = ContentScale.Crop)
+                    Box(
+                        modifier = Modifier
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(SurfaceElevated)
+                    ) {
+                        if (p.data.isNotBlank()) {
+                            Base64Image(p.data, Modifier.fillMaxSize())
+                        } else {
+                            AsyncImage(model = p.src, contentDescription = p.title, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                        }
+                        IconButton(
+                            onClick = { vm.extra.removePhoto(p.id) },
+                            modifier = Modifier.align(Alignment.TopEnd).size(28.dp).background(Color(0xAA000000), RoundedCornerShape(10.dp)),
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "حذف", tint = Color.White, modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun Base64Image(data: String, modifier: Modifier) {
+    var bmp by remember(data) { mutableStateOf<Bitmap?>(null) }
+    LaunchedEffect(data) {
+        bmp = withContext(Dispatchers.IO) {
+            try {
+                val clean = data.substringAfter("base64,")
+                val bytes = Base64.decode(clean, Base64.NO_WRAP)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            } catch (_: Throwable) {
+                null
+            }
+        }
+    }
+    val image = bmp
+    if (image != null) {
+        Image(bitmap = image.asImageBitmap(), contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop)
+    } else {
+        Box(modifier.background(SurfaceElevated))
+    }
+}
+
+private fun downscaleToBase64(context: Context, uri: Uri, maxDim: Int = 640, quality: Int = 72): String? {
+    return try {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        var sample = 1
+        while (bounds.outWidth / sample > maxDim || bounds.outHeight / sample > maxDim) sample *= 2
+        val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+        val bmp = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, opts) } ?: return null
+        val bos = java.io.ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.JPEG, quality, bos)
+        val b64 = Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP)
+        if (!bmp.isRecycled) bmp.recycle()
+        "data:image/jpeg;base64,$b64"
+    } catch (_: Throwable) {
+        null
     }
 }
 

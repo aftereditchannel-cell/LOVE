@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,12 +51,18 @@ fun DashboardScreen(
             }
         },
     ) { padding ->
-        CouplePullRefresh(
-            refreshing = uiState.isRefreshing,
-            onRefresh = { viewModel.refresh() },
-            modifier = Modifier.padding(padding),
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(CuteGradient),
         ) {
-            Column(
+            FloatingHearts()
+            CouplePullRefresh(
+                refreshing = uiState.isRefreshing,
+                onRefresh = { viewModel.refresh() },
+                modifier = Modifier.padding(padding),
+            ) {
+                Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
@@ -63,20 +70,52 @@ fun DashboardScreen(
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Greeting
-                Text(
-                    text = "سلام ${uiState.userName} ❤️",
-                    style = MaterialTheme.typography.displaySmall,
-                    color = TextPrimary,
-                )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = uiState.dateString,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                )
+                // Cute hero header
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            Brush.linearGradient(
+                                listOf(Primary.copy(alpha = 0.35f), PrimaryContainer, Surface)
+                            )
+                        )
+                        .padding(20.dp),
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "💗", fontSize = 30.sp)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "سلام ${uiState.userName} ❤️",
+                                style = MaterialTheme.typography.headlineMedium,
+                                color = TextPrimary,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = uiState.dateString,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary,
+                        )
+                        if (uiState.daysTogether > 0) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "${uiState.daysTogether}",
+                                    style = MaterialTheme.typography.displayMedium,
+                                    color = Primary,
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "روز با هم 💞",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = TextSecondary,
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -198,6 +237,47 @@ fun DashboardScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // Love meter
+                val loveScore = remember(uiState) {
+                    var s = 60
+                    if (uiState.daysTogether > 0) s += (uiState.daysTogether / 7).coerceAtMost(25L).toInt()
+                    if (uiState.todayMood != null) s += 5
+                    if (uiState.partnerMood != null) s += 5
+                    if (uiState.activeTaskCount > 0) s += 3
+                    if (uiState.insights.isNotEmpty()) s += 3
+                    s.coerceIn(0, 100)
+                }
+                DashboardCard(modifier = Modifier.fillMaxWidth(), title = "عشق‌سنج 💘") {
+                    Column {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(text = "$loveScore%", style = MaterialTheme.typography.displaySmall, color = Primary)
+                            Text(
+                                text = when {
+                                    loveScore >= 90 -> "🔥 از این عاشق‌تر نمی‌شه"
+                                    loveScore >= 75 -> "💖 حسابی داغه"
+                                    loveScore >= 60 -> "💞 داره قشنگ رشد می‌کنه"
+                                    else -> "🌱 تازه شروع شده"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextSecondary,
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LinearProgressIndicator(
+                            progress = loveScore / 100f,
+                            modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
+                            color = Primary,
+                            trackColor = SurfaceElevated,
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 // Daily question
                 DashboardCard(modifier = Modifier.fillMaxWidth(), title = "سؤال امروز") {
                     Text(
@@ -243,6 +323,7 @@ fun DashboardScreen(
                 }
 
                 Spacer(modifier = Modifier.height(80.dp))
+                }
             }
         }
     }

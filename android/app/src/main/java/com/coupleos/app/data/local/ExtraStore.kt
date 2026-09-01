@@ -2,9 +2,15 @@ package com.coupleos.app.data.local
 
 import android.content.Context
 import android.util.Base64
+import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
@@ -25,7 +31,7 @@ data class SongItem(val id: String, val title: String, val artist: String, val n
 data class DatePlan(val id: String, val title: String, val desc: String, val emoji: String, val whenText: String)
 
 @Serializable
-data class PhotoItem(val id: String, val src: String, val title: String, val date: String)
+data class PhotoItem(val id: String, val src: String, val title: String, val date: String, val data: String = "")
 
 @Serializable
 data class PetState(
@@ -95,16 +101,25 @@ data class ExtraBundle(
     val pet: PetState = PetState(),
     val compliments: List<StickyNote> = emptyList(),
     val play: GamePlay = GamePlay(),
+    val rev: Long = 0,
 )
 
 @Singleton
 class ExtraStore @Inject constructor(
     @ApplicationContext context: Context,
+    private val repo: GitHubRepository,
+    private val secureStorage: SecureStorage,
 ) {
     private val prefs = context.getSharedPreferences("couple_os_extra", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val _bundle = MutableStateFlow(read())
     val bundle: StateFlow<ExtraBundle> = _bundle
+
+    init {
+        // Pull the cute extras from the couple token so nothing is device-local only.
+        pullFromToken()
+    }
 
     private fun read(): ExtraBundle {
         val raw = prefs.getString("bundle", null) ?: return ExtraBundle()
@@ -112,8 +127,60 @@ class ExtraStore @Inject constructor(
     }
 
     private fun persist(next: ExtraBundle) {
-        prefs.edit().putString("bundle", json.encodeToString(ExtraBundle.serializer(), next)).apply()
-        _bundle.value = next
+        val stamped = next.copy(rev = System.currentTimeMillis())
+        prefs.edit().putString("bundle", json.encodeToString(ExtraBundle.serializer(), stamped)).apply()
+        _bundle.value = stamped
+        pushToToken(stamped)
+    }
+
+    // ── GitHub token sync ─────────────────────────────────────
+    // extras.json holds the whole bundle (except photos), photos.json holds the
+    // photo list separately so a large photo can never corrupt the rest.
+    private fun pushToToken(bundle: ExtraBundle) {
+        if (!secureStorage.isPaired()) return
+        scope.launch {
+            try {
+                val extrasPayload = bundle.copy(photos = emptyList())
+                repo.saveToGist(GitHubRepository.EXTRAS_FILE, json.encodeToString(ExtraBundle.serializer(), extrasPayload))
+                repo.saveToGist(GitHubRepository.PHOTOS_FILE, json.encodeToString(bundle.photos))
+            } catch (_: Throwable) {
+                // Network/offline — local copy is the source of truth; next change re-pushes.
+            }
+        }
+    }
+
+    private fun pullFromToken() {
+        scope.launch {
+            try {
+                if (!secureStorage.isPaired()) return@launch
+                // Merge the extras bundle (last-write-wins by rev).
+                repo.readRawContent(GitHubRepository.EXTRAS_FILE).getOrNull()?.let { raw ->
+                    runCatching { json.decodeFromString<ExtraBundle>(raw) }.getOrNull()?.let { remote ->
+                        val local = _bundle.value
+                        if (remote.rev > local.rev) {
+                            val merged = remote.copy(photos = local.photos)
+                            prefs.edit().putString("bundle", json.encodeToString(ExtraBundle.serializer(), merged)).apply()
+                            _bundle.value = merged
+                        }
+                    }
+                }
+                // Merge the photo list (by id) from the token.
+                repo.readMergedContent(GitHubRepository.PHOTOS_FILE).getOrNull()?.let { raw ->
+                    runCatching { json.decodeFromString<List<PhotoItem>>(raw) }.getOrNull()?.let { remotePhotos ->
+                        if (remotePhotos.isNotEmpty()) {
+                            val local = _bundle.value
+                            val localIds = local.photos.map { it.id }.toSet()
+                            val merged = local.photos + remotePhotos.filter { it.id !in localIds }
+                            val next = local.copy(photos = merged)
+                            prefs.edit().putString("bundle", json.encodeToString(ExtraBundle.serializer(), next)).apply()
+                            _bundle.value = next
+                        }
+                    }
+                }
+            } catch (_: Throwable) {
+                // Never let a sync failure crash the app.
+            }
+        }
     }
 
     fun addNote(text: String, color: String = "rose") {
@@ -145,8 +212,8 @@ class ExtraStore @Inject constructor(
     }
     fun removeDate(id: String) = persist(_bundle.value.copy(dates = _bundle.value.dates.filter { it.id != id }))
 
-    fun addPhoto(src: String, title: String) {
-        persist(_bundle.value.copy(photos = listOf(PhotoItem(UUID.randomUUID().toString(), src, title, LocalDate.now().toString())) + _bundle.value.photos))
+    fun addPhoto(src: String, title: String, data: String = "") {
+        persist(_bundle.value.copy(photos = listOf(PhotoItem(UUID.randomUUID().toString(), src, title, LocalDate.now().toString(), data)) + _bundle.value.photos))
     }
     fun removePhoto(id: String) = persist(_bundle.value.copy(photos = _bundle.value.photos.filter { it.id != id }))
 
