@@ -33,7 +33,8 @@ class SettingsViewModel @Inject constructor(
         partnerTokenMasked = storage.getMaskedPartnerToken(),
         myUsername = storage.getMyGitHubUsername() ?: "",
         partnerUsername = storage.getPartnerGitHubUsername() ?: "",
-        gistSyncEnabled = storage.isGistSyncEnabled()
+        gistSyncEnabled = storage.isGistSyncEnabled(),
+        biometricEnabled = storage.isBiometricEnabled()
     ))
     val uiState: StateFlow<SettingsState> = _ui
     data class SettingsState(
@@ -42,6 +43,7 @@ class SettingsViewModel @Inject constructor(
         val myUsername:String="",
         val partnerUsername:String="",
         val gistSyncEnabled:Boolean=true,
+        val biometricEnabled:Boolean=false,
         val feedback:String?=null,
         val checking:Boolean=false,
         val myConnected:Boolean?=null,
@@ -66,7 +68,7 @@ class SettingsViewModel @Inject constructor(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), onBack:()->Unit = {}){
+fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), onBack:()->Unit = {}, onCustomize:()->Unit = {}){
     val ui by vm.uiState.collectAsState()
     Scaffold(containerColor=com.coupleos.app.ui.theme.Background, topBar={ TopAppBar(title={Text("تنظیمات ⚙️", color=com.coupleos.app.ui.theme.TextPrimary)}, colors=TopAppBarDefaults.topAppBarColors(containerColor=com.coupleos.app.ui.theme.Surface))}){ pad->
         Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement=Arrangement.spacedBy(16.dp)){
@@ -85,6 +87,19 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), onBack:()->Unit = {}
                         if(ui.checking) CircularProgressIndicator(Modifier.size(18.dp), color=com.coupleos.app.ui.theme.OnPrimary, strokeWidth=2.dp) else Text("بررسی اتصال توکن‌ها")
                     }
                     Text("اتصال تایید شه ولی دیتا روی توکن ذخیره میشه — این دکمه هم اتصال و هم خواندن/نوشتن Gist رو تست می‌کنه", style=MaterialTheme.typography.labelSmall, color=com.coupleos.app.ui.theme.TextTertiary)
+                }
+            }
+            Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=com.coupleos.app.ui.theme.Surface), shape=RoundedCornerShape(16.dp)){
+                Column(Modifier.padding(16.dp), verticalArrangement=Arrangement.spacedBy(10.dp)){
+                    Text("ظاهر و امنیت", style=MaterialTheme.typography.titleSmall, color=com.coupleos.app.ui.theme.Primary)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically){
+                        Column(Modifier.weight(1f)){
+                            Text("اثر انگشت", style=MaterialTheme.typography.titleSmall, color=com.coupleos.app.ui.theme.TextPrimary)
+                            Text("قفل ورود با حسگر اثر انگشت دستگاه", style=MaterialTheme.typography.labelSmall, color=com.coupleos.app.ui.theme.TextTertiary)
+                        }
+                        Switch(checked=ui.biometricEnabled, onCheckedChange={ vm.toggleBiometric(it)})
+                    }
+                    Button(onClick={ onCustomize() }, modifier=Modifier.fillMaxWidth(), colors=ButtonDefaults.buttonColors(containerColor=com.coupleos.app.ui.theme.Primary)){ Text("کاستوم‌سازی ظاهر 🎨") }
                 }
             }
             Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=com.coupleos.app.ui.theme.Surface), shape=RoundedCornerShape(16.dp)){

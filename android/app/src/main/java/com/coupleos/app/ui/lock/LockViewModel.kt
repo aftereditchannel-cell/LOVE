@@ -15,6 +15,8 @@ data class LockUiState(
     val firstPin: String = "",
     val error: String? = null,
     val isUnlocked: Boolean = false,
+    val askBiometric: Boolean = false,
+    val biometricEnabled: Boolean = false,
 )
 
 @HiltViewModel
@@ -23,11 +25,13 @@ class LockViewModel @Inject constructor(
     private val cryptoManager: CryptoManager,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(LockUiState())
+    private val _uiState = MutableStateFlow(
+        LockUiState(biometricEnabled = secureStorage.isBiometricEnabled())
+    )
     val uiState: StateFlow<LockUiState> = _uiState
 
-    // Setup mode — user creates a new PIN
     fun onSetupDigit(digit: Int) {
+        if (_uiState.value.askBiometric) return
         val current = _uiState.value.enteredPin
         if (current.length >= 4) return
 
@@ -36,24 +40,16 @@ class LockViewModel @Inject constructor(
 
         if (newPin.length == 4) {
             if (!_uiState.value.isConfirming) {
-                // First entry — ask to confirm
                 _uiState.update {
-                    it.copy(
-                        firstPin = newPin,
-                        enteredPin = "",
-                        isConfirming = true,
-                    )
+                    it.copy(firstPin = newPin, enteredPin = "", isConfirming = true)
                 }
             } else {
-                // Confirming
                 if (newPin == _uiState.value.firstPin) {
-                    // PIN matches — save
                     val hash = cryptoManager.hashPin(newPin)
                     secureStorage.savePinHash(hash)
                     secureStorage.setLockSetupDone(true)
-                    _uiState.update { it.copy(isUnlocked = true) }
+                    _uiState.update { it.copy(askBiometric = true, enteredPin = "") }
                 } else {
-                    // Mismatch
                     _uiState.update {
                         it.copy(
                             enteredPin = "",
@@ -67,7 +63,6 @@ class LockViewModel @Inject constructor(
         }
     }
 
-    // Unlock mode — user enters existing PIN
     fun onUnlockDigit(digit: Int) {
         val current = _uiState.value.enteredPin
         if (current.length >= 4) return
@@ -80,12 +75,7 @@ class LockViewModel @Inject constructor(
             if (savedHash != null && cryptoManager.verifyPin(newPin, savedHash)) {
                 _uiState.update { it.copy(isUnlocked = true) }
             } else {
-                _uiState.update {
-                    it.copy(
-                        enteredPin = "",
-                        error = "رمز اشتباه",
-                    )
-                }
+                _uiState.update { it.copy(enteredPin = "", error = "رمز اشتباه") }
             }
         }
     }
@@ -97,11 +87,26 @@ class LockViewModel @Inject constructor(
         }
     }
 
-    fun onBiometric() {
-        // BiometricPrompt integration — handled at Activity level
-        // For now, mark as unlocked if biometric is enabled
-        if (secureStorage.isBiometricEnabled()) {
-            _uiState.update { it.copy(isUnlocked = true) }
+    fun onBiometricSuccess() {
+        if (secureStorage.isBiometricEnabled() || _uiState.value.askBiometric) {
+            if (_uiState.value.askBiometric) secureStorage.setBiometricEnabled(true)
+            _uiState.update { it.copy(isUnlocked = true, biometricEnabled = true, askBiometric = false, error = null) }
         }
     }
+
+    fun onBiometricError(message: String) {
+        _uiState.update { it.copy(error = message) }
+    }
+
+    fun enableBiometricAndContinue() {
+        secureStorage.setBiometricEnabled(true)
+        _uiState.update { it.copy(isUnlocked = true, biometricEnabled = true, askBiometric = false) }
+    }
+
+    fun skipBiometric() {
+        secureStorage.setBiometricEnabled(false)
+        _uiState.update { it.copy(isUnlocked = true, askBiometric = false) }
+    }
+
+    fun isBiometricEnabled(): Boolean = secureStorage.isBiometricEnabled()
 }

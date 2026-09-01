@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.2.0] — 2026-09-01
+
+### Added
+- Kiss counter with floating hearts
+- Couple pet (feed + pet + cute faces)
+- Compliment jar
+- Daily love fortune
+- Love capsules
+- Chat sticker tray
+- Candy and peach cute themes
+- Good morning / good night shortcuts
+
+## [1.1.0] — 2026-09-01
+
+### Added
+- Working fingerprint unlock (Android BiometricPrompt + WebAuthn / local scan)
+- Pull-to-refresh on dashboard, chat, memories, and web screens
+- Glassmorphism UI with floating hearts and theme palettes
+- In-app customization (theme, accent, glass blur, font, stickers, title)
+- Date planner, love fridge notes, couple games, habits, playlist, our story
+- Real photo gallery and real search across memories/chat/journal/tasks
+- Interactive web PWA so every feature can be used and tested in the browser
+
+### Fixed
+- Stub screens (photos, search, date planner, our story) now fully active
+- Dashboard quick actions for journal and tasks
+- Lock screen biometric no longer unlocks without a real prompt
+
 ## [1.0.0] — 2026-08-20
 
 ### Added

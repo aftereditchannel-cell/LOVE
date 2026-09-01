@@ -48,7 +48,7 @@ fun MoreScreen(navController: NavController) {
 
         // Section: Together
         SectionTitle("دنیای ما")
-        MoreMenuItem(Icons.Outlined.AutoStories, stringResource(R.string.more_our_story)) { navController.navigate(Screen.Profile.route) }
+        MoreMenuItem(Icons.Outlined.AutoStories, stringResource(R.string.more_our_story)) { navController.navigate(Screen.OurStory.route) }
         MoreMenuItem(Icons.Outlined.PhotoCamera, stringResource(R.string.more_photos)) { navController.navigate(Screen.Photos.route) }
         MoreMenuItem(Icons.Outlined.Star, stringResource(R.string.more_wishlist)) { navController.navigate(Screen.Wishlist.route) }
         MoreMenuItem(Icons.Outlined.Checklist, stringResource(R.string.more_bucket_list)) { navController.navigate(Screen.BucketList.route) }
@@ -60,9 +60,17 @@ fun MoreScreen(navController: NavController) {
         SectionTitle("ویژه")
         MoreMenuItem(Icons.Outlined.Email, stringResource(R.string.more_love_letters)) { navController.navigate(Screen.Letters.route) }
         MoreMenuItem(Icons.Outlined.CardGiftcard, stringResource(R.string.more_surprises)) { navController.navigate(Screen.Surprises.route) }
-        MoreMenuItem(Icons.Outlined.Restaurant, stringResource(R.string.more_date_planner)) { navController.navigate(Screen.Countdown.route) }
+        MoreMenuItem(Icons.Outlined.Restaurant, stringResource(R.string.more_date_planner)) { navController.navigate(Screen.DatePlanner.route) }
         MoreMenuItem(Icons.Outlined.QuestionAnswer, stringResource(R.string.more_questions)) { navController.navigate(Screen.Questions.route) }
         MoreMenuItem(Icons.Outlined.Favorite, stringResource(R.string.more_relationship)) { navController.navigate(Screen.Relationship.route) }
+        MoreMenuItem(Icons.Outlined.AutoAwesome, "یخچال عشق") { navController.navigate(Screen.LoveNotes.route) }
+        MoreMenuItem(Icons.Outlined.FavoriteBorder, "بوس‌شمار") { navController.navigate(Screen.Kisses.route) }
+        MoreMenuItem(Icons.Outlined.Pets, "حیوون دونفره") { navController.navigate(Screen.Pet.route) }
+        MoreMenuItem(Icons.Outlined.VolunteerActivism, "شیشه تعریف") { navController.navigate(Screen.Jar.route) }
+        MoreMenuItem(Icons.Outlined.Cake, "فال عشق") { navController.navigate(Screen.Fortune.route) }
+        MoreMenuItem(Icons.Outlined.SportsEsports, "بازی دونفره") { navController.navigate(Screen.Games.route) }
+        MoreMenuItem(Icons.Outlined.LocalFireDepartment, "عادت‌های دونفره") { navController.navigate(Screen.Habits.route) }
+        MoreMenuItem(Icons.Outlined.MusicNote, "آهنگ ما") { navController.navigate(Screen.Music.route) }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -77,6 +85,7 @@ fun MoreScreen(navController: NavController) {
         SectionTitle("ابزار")
         MoreMenuItem(Icons.Outlined.SmartToy, stringResource(R.string.more_ai)) { navController.navigate(Screen.AI.route) }
         MoreMenuItem(Icons.Outlined.Search, "جستجو") { navController.navigate(Screen.Search.route) }
+        MoreMenuItem(Icons.Outlined.Palette, "کاستوم‌سازی") { navController.navigate(Screen.Customize.route) }
         MoreMenuItem(Icons.Outlined.Settings, stringResource(R.string.more_settings)) { navController.navigate(Screen.Settings.route) }
 
         Spacer(modifier = Modifier.height(80.dp))

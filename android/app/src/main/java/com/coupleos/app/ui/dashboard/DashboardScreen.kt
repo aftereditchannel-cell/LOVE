@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.coupleos.app.ui.Screen
+import com.coupleos.app.ui.components.CouplePullRefresh
 import com.coupleos.app.ui.theme.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -49,10 +50,10 @@ fun DashboardScreen(
             }
         },
     ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+        CouplePullRefresh(
+            refreshing = uiState.isRefreshing,
+            onRefresh = { viewModel.refresh() },
+            modifier = Modifier.padding(padding),
         ) {
             Column(
                 modifier = Modifier
@@ -218,8 +219,8 @@ fun DashboardScreen(
                 ) {
                     QuickAction(Modifier.weight(1f), Icons.Outlined.Mood, "حال") { navController.navigate(Screen.Mood.route) }
                     QuickAction(Modifier.weight(1f), Icons.Outlined.PhotoCamera, "خاطره") { navController.navigate(Screen.Memories.route) }
-                    QuickAction(Modifier.weight(1f), Icons.Outlined.EditNote, "یادداشت") { }
-                    QuickAction(Modifier.weight(1f), Icons.Outlined.CheckCircle, "کار") { }
+                    QuickAction(Modifier.weight(1f), Icons.Outlined.EditNote, "یادداشت") { navController.navigate(Screen.Journal.route) }
+                    QuickAction(Modifier.weight(1f), Icons.Outlined.CheckCircle, "کار") { navController.navigate(Screen.Tasks.route) }
                 }
 
                 // Tasks
