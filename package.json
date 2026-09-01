@@ -1,0 +1,22 @@
+{
+  "name": "couple-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Couple OS — دنیای کوچیک دوتایی ما",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "node scripts/dev.mjs",
+    "dev:api": "npm run dev -w couple-os-api",
+    "dev:web": "npm run dev -w couple-os-web",
+    "build": "npm run build -w couple-os-api && npm run build -w couple-os-web",
+    "test": "npm run test -w couple-os-api",
+    "seed": "npm run seed -w couple-os-api",
+    "build:apk": "node scripts/build-apk.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
