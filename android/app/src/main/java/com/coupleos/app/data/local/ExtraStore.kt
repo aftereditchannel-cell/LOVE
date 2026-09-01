@@ -228,13 +228,13 @@ class ExtraStore @Inject constructor(
         if (index !in 0..8 || g.tttBoard[index].isNotEmpty()) return
         val board = g.tttBoard.toMutableList()
         board[index] = g.tttTurn
-        var winner = tttWinner(board)
+        var winner = boardWinner(board)
         var turn = if (winner.isEmpty()) if (g.tttTurn == "me") "partner" else "me" else g.tttTurn
         if (winner.isEmpty() && g.tttMode == "cpu" && turn == "partner") {
             val empty = board.indices.filter { board[it].isEmpty() }
             if (empty.isNotEmpty()) {
                 board[empty.random()] = "partner"
-                winner = tttWinner(board)
+                winner = boardWinner(board)
                 if (winner.isEmpty()) turn = "me"
             }
         }
@@ -254,7 +254,7 @@ class ExtraStore @Inject constructor(
         if (g.rpsResult.isNotEmpty()) return
         g = if (who == "partner") g.copy(rpsPartnerChoice = choice) else g.copy(rpsMeChoice = choice)
         if (g.rpsMeChoice.isNotEmpty() && g.rpsPartnerChoice.isNotEmpty()) {
-            val r = rpsBeats(g.rpsMeChoice, g.rpsPartnerChoice)
+            val r = cuteRps(g.rpsMeChoice, g.rpsPartnerChoice)
             val result = if (r == 0) "draw" else if (r > 0) "me" else "partner"
             g = g.copy(rpsResult = result)
             if (result == "me") g = g.copy(rpsMe = g.rpsMe + 1)
@@ -316,24 +316,22 @@ class ExtraStore @Inject constructor(
         }
     }
 
-    companion object {
-        fun tttWinner(board: List<String>): String {
-            val lines = arrayOf(
-                intArrayOf(0, 1, 2), intArrayOf(3, 4, 5), intArrayOf(6, 7, 8),
-                intArrayOf(0, 3, 6), intArrayOf(1, 4, 7), intArrayOf(2, 5, 8),
-                intArrayOf(0, 4, 8), intArrayOf(2, 4, 6),
-            )
-            for (l in lines) {
-                val a = board.getOrElse(l[0]) { "" }
-                if (a.isNotEmpty() && a == board.getOrElse(l[1]) { "" } && a == board.getOrElse(l[2]) { "" }) return a
-            }
-            return if (board.all { it.isNotEmpty() }) "draw" else ""
+    private fun boardWinner(board: List<String>): String {
+        val lines = arrayOf(
+            intArrayOf(0, 1, 2), intArrayOf(3, 4, 5), intArrayOf(6, 7, 8),
+            intArrayOf(0, 3, 6), intArrayOf(1, 4, 7), intArrayOf(2, 5, 8),
+            intArrayOf(0, 4, 8), intArrayOf(2, 4, 6),
+        )
+        for (l in lines) {
+            val a = board.getOrElse(l[0]) { "" }
+            if (a.isNotEmpty() && a == board.getOrElse(l[1]) { "" } && a == board.getOrElse(l[2]) { "" }) return a
         }
+        return if (board.all { it.isNotEmpty() }) "draw" else ""
+    }
 
-        fun rpsBeats(a: String, b: String): Int {
-            if (a == b) return 0
-            if ((a == "flower" && b == "teddy") || (a == "teddy" && b == "bow") || (a == "bow" && b == "flower")) return 1
-            return -1
-        }
+    private fun cuteRps(a: String, b: String): Int {
+        if (a == b) return 0
+        if ((a == "flower" && b == "teddy") || (a == "teddy" && b == "bow") || (a == "bow" && b == "flower")) return 1
+        return -1
     }
 }

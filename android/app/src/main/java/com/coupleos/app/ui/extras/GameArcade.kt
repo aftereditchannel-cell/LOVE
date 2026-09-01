@@ -1,9 +1,9 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.coupleos.app.ui.extras
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -153,16 +153,21 @@ private fun MemoryPane(extra: ExtraStore, modifier: Modifier) {
         if (g.memCards.isEmpty()) {
             Button(onClick = { extra.startMemory() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Primary)) { Text("شروع") }
         } else {
-            LazyVerticalGrid(columns = GridCells.Fixed(4), modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(g.memCards.size) { i ->
-                    val c = g.memCards[i]
-                    val open = c.flipped || c.matched
-                    Button(
-                        onClick = { extra.flipMemory(i) },
-                        modifier = Modifier.aspectRatio(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = if (c.matched) PrimaryContainer else Surface, contentColor = TextPrimary),
-                        shape = RoundedCornerShape(16.dp),
-                    ) { Text(if (open) c.emoji else "♡", fontSize = 22.sp) }
+            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (row in 0 until 4) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (col in 0 until 4) {
+                            val i = row * 4 + col
+                            val c = g.memCards.getOrNull(i) ?: continue
+                            val open = c.flipped || c.matched
+                            Button(
+                                onClick = { extra.flipMemory(i) },
+                                modifier = Modifier.weight(1f).aspectRatio(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = if (c.matched) PrimaryContainer else Surface, contentColor = TextPrimary),
+                                shape = RoundedCornerShape(16.dp),
+                            ) { Text(if (open) c.emoji else "♡", fontSize = 22.sp) }
+                        }
+                    }
                 }
             }
             if (g.memWon) Text("آفرین گل 🌸 رکورد: ${g.memoryMovesBest} حرکت", color = Primary)
@@ -233,15 +238,20 @@ private fun TttPane(extra: ExtraStore, modifier: Modifier) {
                 else -> if (g.tttTurn == "me") "نوبت تو" else "نوبت پارتنر"
             }
             Text(msg, color = TextPrimary)
-            LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.width(280.dp).height(280.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(9) { i ->
-                    val v = g.tttBoard.getOrElse(i) { "" }
-                    Button(
-                        onClick = { extra.playTtt(i) },
-                        modifier = Modifier.aspectRatio(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = Surface, contentColor = TextPrimary),
-                        shape = RoundedCornerShape(20.dp),
-                    ) { Text(if (v == "me") "💗" else if (v == "partner") "🌸" else "", fontSize = 28.sp) }
+            Column(Modifier.width(280.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (row in 0..2) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for (col in 0..2) {
+                            val i = row * 3 + col
+                            val v = g.tttBoard.getOrElse(i) { "" }
+                            Button(
+                                onClick = { extra.playTtt(i) },
+                                modifier = Modifier.weight(1f).aspectRatio(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = Surface, contentColor = TextPrimary),
+                                shape = RoundedCornerShape(20.dp),
+                            ) { Text(if (v == "me") "💗" else if (v == "partner") "🌸" else "", fontSize = 28.sp) }
+                        }
+                    }
                 }
             }
             Button(onClick = { extra.startTtt(g.tttMode) }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Primary)) { Text("دور جدید") }
