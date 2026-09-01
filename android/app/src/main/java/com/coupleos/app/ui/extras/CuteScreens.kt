@@ -54,9 +54,9 @@ fun PetScreen(vm: ExtraViewModel = hiltViewModel()) {
             Text(emoji, fontSize = 84.sp)
             Text(p.name, color = TextPrimary, style = MaterialTheme.typography.titleLarge)
             Text("گرسنگی ${p.hunger}", color = TextTertiary)
-            LinearProgressIndicator(progress = { p.hunger / 100f }, modifier = Modifier.fillMaxWidth().height(8.dp), color = Primary, trackColor = SurfaceElevated)
+            LinearProgressIndicator(progress = p.hunger / 100f, modifier = Modifier.fillMaxWidth().height(8.dp), color = Primary, trackColor = SurfaceElevated)
             Text("عشق ${p.love}", color = TextTertiary)
-            LinearProgressIndicator(progress = { p.love / 100f }, modifier = Modifier.fillMaxWidth().height(8.dp), color = Primary, trackColor = SurfaceElevated)
+            LinearProgressIndicator(progress = p.love / 100f, modifier = Modifier.fillMaxWidth().height(8.dp), color = Primary, trackColor = SurfaceElevated)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 Button(onClick = { vm.extra.feedPet() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = Primary)) { Text("🍓 غذا") }
                 Button(onClick = { vm.extra.petPet() }, modifier = Modifier.weight(1f), colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = Primary)) { Text("🤍 نوازش") }

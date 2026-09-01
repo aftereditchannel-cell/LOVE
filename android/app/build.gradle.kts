@@ -138,7 +138,7 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     // Biometric
-    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // DataStore (encrypted preferences)
     implementation("androidx.datastore:datastore-preferences:1.1.1")

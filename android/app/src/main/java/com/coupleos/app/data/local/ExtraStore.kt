@@ -5,6 +5,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
@@ -59,7 +60,7 @@ class ExtraStore @Inject constructor(
 
     private fun read(): ExtraBundle {
         val raw = prefs.getString("bundle", null) ?: return ExtraBundle()
-        return try { json.decodeFromString(raw) } catch (_: Exception) { ExtraBundle() }
+        return try { json.decodeFromString<ExtraBundle>(raw) } catch (_: Exception) { ExtraBundle() }
     }
 
     private fun persist(next: ExtraBundle) {

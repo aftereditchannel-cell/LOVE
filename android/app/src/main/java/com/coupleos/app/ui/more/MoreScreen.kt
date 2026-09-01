@@ -65,9 +65,9 @@ fun MoreScreen(navController: NavController) {
         MoreMenuItem(Icons.Outlined.Favorite, stringResource(R.string.more_relationship)) { navController.navigate(Screen.Relationship.route) }
         MoreMenuItem(Icons.Outlined.AutoAwesome, "یخچال عشق") { navController.navigate(Screen.LoveNotes.route) }
         MoreMenuItem(Icons.Outlined.FavoriteBorder, "بوس‌شمار") { navController.navigate(Screen.Kisses.route) }
-        MoreMenuItem(Icons.Outlined.Pets, "حیوون دونفره") { navController.navigate(Screen.Pet.route) }
-        MoreMenuItem(Icons.Outlined.VolunteerActivism, "شیشه تعریف") { navController.navigate(Screen.Jar.route) }
-        MoreMenuItem(Icons.Outlined.Cake, "فال عشق") { navController.navigate(Screen.Fortune.route) }
+        MoreMenuItem(Icons.Outlined.Mood, "حیوون دونفره") { navController.navigate(Screen.Pet.route) }
+        MoreMenuItem(Icons.Outlined.Email, "شیشه تعریف") { navController.navigate(Screen.Jar.route) }
+        MoreMenuItem(Icons.Outlined.Star, "فال عشق") { navController.navigate(Screen.Fortune.route) }
         MoreMenuItem(Icons.Outlined.SportsEsports, "بازی دونفره") { navController.navigate(Screen.Games.route) }
         MoreMenuItem(Icons.Outlined.LocalFireDepartment, "عادت‌های دونفره") { navController.navigate(Screen.Habits.route) }
         MoreMenuItem(Icons.Outlined.MusicNote, "آهنگ ما") { navController.navigate(Screen.Music.route) }

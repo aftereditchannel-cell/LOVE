@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,6 +57,10 @@ class SettingsViewModel @Inject constructor(
     fun toggleGistSync(enabled:Boolean){
         storage.setGistSyncEnabled(enabled)
         _ui.update{ it.copy(gistSyncEnabled=enabled, feedback= if(enabled) "همگام سازی توکن فعال شد" else "همگام سازی توکن غیرفعال")}
+    }
+    fun toggleBiometric(enabled:Boolean){
+        storage.setBiometricEnabled(enabled)
+        _ui.update{ it.copy(biometricEnabled=enabled, feedback= if(enabled) "اثر انگشت فعال شد 🔐" else "اثر انگشت خاموش شد")}
     }
     fun clearData(){
         storage.clearAll()

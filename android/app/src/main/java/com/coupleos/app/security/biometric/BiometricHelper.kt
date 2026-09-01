@@ -49,11 +49,17 @@ class BiometricHelper(private val activity: FragmentActivity) {
                 }
             }
         )
+        val authenticators =
+            if (BiometricManager.from(activity).canAuthenticate(BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS) {
+                BIOMETRIC_STRONG
+            } else {
+                BIOMETRIC_WEAK
+            }
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle("ورود با اثر انگشت")
             .setSubtitle("دنیای کوچیک ما")
             .setNegativeButtonText("استفاده از PIN")
-            .setAllowedAuthenticators(BIOMETRIC_STRONG or BIOMETRIC_WEAK)
+            .setAllowedAuthenticators(authenticators)
             .build()
         prompt.authenticate(info)
     }
