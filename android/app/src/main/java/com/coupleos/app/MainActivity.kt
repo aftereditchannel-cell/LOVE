@@ -25,8 +25,16 @@ class MainActivity : AppCompatActivity() {
     @Inject lateinit var appearancePrefs: AppearancePrefs
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        installSplashScreen()
-        setTheme(R.style.Theme_CoupleOS)
+        try {
+            installSplashScreen()
+        } catch (_: Throwable) {
+            // Splash screen is cosmetic — never let it kill the launch.
+        }
+        try {
+            setTheme(R.style.Theme_CoupleOS)
+        } catch (_: Throwable) {
+            // Theme is already AppCompat via the manifest/activity theme.
+        }
         super.onCreate(savedInstanceState)
         try {
             enableEdgeToEdge()

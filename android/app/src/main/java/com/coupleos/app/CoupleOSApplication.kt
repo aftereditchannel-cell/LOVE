@@ -12,13 +12,25 @@ class CoupleOSApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
 
+    override fun onCreate() {
+        super.onCreate()
+        CrashLogger.install(this)
+    }
+
     override val workManagerConfiguration: Configuration
-        get() = Configuration.Builder()
-            .apply {
-                if (::workerFactory.isInitialized) {
-                    setWorkerFactory(workerFactory)
+        get() = try {
+            Configuration.Builder()
+                .apply {
+                    if (::workerFactory.isInitialized) {
+                        setWorkerFactory(workerFactory)
+                    }
                 }
-            }
-            .setMinimumLoggingLevel(android.util.Log.INFO)
-            .build()
+                .setMinimumLoggingLevel(android.util.Log.INFO)
+                .build()
+        } catch (t: Throwable) {
+            // Never let WorkManager configuration crash the app on launch.
+            Configuration.Builder()
+                .setMinimumLoggingLevel(android.util.Log.INFO)
+                .build()
+        }
 }

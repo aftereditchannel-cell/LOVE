@@ -46,10 +46,10 @@ class AppViewModel @Inject constructor(
                     !isLockSetup -> AppState.NeedLock
                     else -> AppState.Locked
                 }
-            } catch (e: Exception) {
+            } catch (t: Throwable) {
                 // If secure storage crashes, reset and go to setup
-                Log.e("AppViewModel", "SecureStorage error, resetting", e)
-                try { secureStorage.clearAll() } catch (_: Exception) {}
+                Log.e("AppViewModel", "SecureStorage error, resetting", t)
+                try { secureStorage.clearAll() } catch (_: Throwable) {}
                 _appState.value = AppState.NeedSetup
             }
         }
