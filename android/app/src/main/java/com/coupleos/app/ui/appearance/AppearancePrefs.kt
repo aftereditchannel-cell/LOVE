@@ -9,7 +9,7 @@ import javax.inject.Singleton
 
 data class AppearanceState(
     val theme: String = "rose-glass",
-    val accent: Long = 0xFFFF8AA0,
+    val accent: Int = 0xFFFF8AA0,
     val glass: Int = 22,
     val particles: Boolean = true,
     val cuteStickers: Boolean = true,
@@ -28,7 +28,7 @@ class AppearancePrefs @Inject constructor(
 
     private fun read(): AppearanceState = AppearanceState(
         theme = prefs.getString("theme", "rose-glass") ?: "rose-glass",
-        accent = prefs.getLong("accent", 0xFFFF8AA0),
+        accent = prefs.getInt("accent", 0xFFFF8AA0),
         glass = prefs.getInt("glass", 22),
         particles = prefs.getBoolean("particles", true),
         cuteStickers = prefs.getBoolean("cute", true),
@@ -40,7 +40,7 @@ class AppearancePrefs @Inject constructor(
     fun update(patch: AppearanceState) {
         prefs.edit()
             .putString("theme", patch.theme)
-            .putLong("accent", patch.accent)
+            .putInt("accent", patch.accent)
             .putInt("glass", patch.glass)
             .putBoolean("particles", patch.particles)
             .putBoolean("cute", patch.cuteStickers)

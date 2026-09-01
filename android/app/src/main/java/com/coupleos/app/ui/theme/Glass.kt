@@ -24,7 +24,7 @@ fun Modifier.glass(
         .border(1.dp, Color.White.copy(alpha = 0.16f), shape)
 }
 
-fun couplePalette(theme: String, accent: Long): CouplePalette {
+fun couplePalette(theme: String, accent: Int): CouplePalette {
     val a = Color(accent)
     return when (theme) {
         "sakura" -> CouplePalette(
