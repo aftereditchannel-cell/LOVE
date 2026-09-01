@@ -6,8 +6,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.LocalDate
 import java.util.UUID
@@ -110,11 +108,11 @@ class ExtraStore @Inject constructor(
 
     private fun read(): ExtraBundle {
         val raw = prefs.getString("bundle", null) ?: return ExtraBundle()
-        return try { json.decodeFromString<ExtraBundle>(raw) } catch (_: Exception) { ExtraBundle() }
+        return try { json.decodeFromString(ExtraBundle.serializer(), raw) } catch (_: Exception) { ExtraBundle() }
     }
 
     private fun persist(next: ExtraBundle) {
-        prefs.edit().putString("bundle", json.encodeToString(next)).apply()
+        prefs.edit().putString("bundle", json.encodeToString(ExtraBundle.serializer(), next)).apply()
         _bundle.value = next
     }
 
@@ -294,7 +292,7 @@ class ExtraStore @Inject constructor(
             quiz = QuizShare(g.quizIndex, g.quizMy.takeIf { it >= 0 }, g.quizPartner.takeIf { it >= 0 }, g.quizRevealed, g.quizMatches),
             duo = DuoShare(g.tttMe, g.tttPartner, g.rpsMe, g.rpsPartner),
         )
-        val raw = json.encodeToString(share)
+        val raw = json.encodeToString(PlayShare.serializer(), share)
         return Base64.encodeToString(raw.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
     }
 
@@ -303,7 +301,7 @@ class ExtraStore @Inject constructor(
             val trimmed = code.trim()
             if (trimmed.isEmpty()) return false
             val raw = String(Base64.decode(trimmed, Base64.DEFAULT), Charsets.UTF_8)
-            val share = json.decodeFromString<PlayShare>(raw)
+            val share = json.decodeFromString(PlayShare.serializer(), raw)
             var p = play()
             share.ttt?.let { p = p.copy(tttBoard = it.board, tttTurn = it.turn, tttMode = it.mode, tttWinner = it.winner ?: "", tttStarted = true) }
             share.rps?.let { p = p.copy(rpsMeChoice = it.me.orEmpty(), rpsPartnerChoice = it.partner.orEmpty(), rpsResult = it.result.orEmpty()) }

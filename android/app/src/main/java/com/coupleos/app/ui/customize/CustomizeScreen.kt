@@ -64,8 +64,8 @@ fun CustomizeScreen(onBack: () -> Unit = {}, vm: CustomizeViewModel = hiltViewMo
                                 .background(if (on) PrimaryContainer else Surface)
                                 .border(1.dp, if (on) Primary else DividerColor, RoundedCornerShape(16.dp))
                                 .clickable { vm.prefs.patch { it.copy(theme = id, accent = when (id) {
-                                    "sakura" -> 0xFFFF7EB3; "lavender" -> 0xFFC9A0FF; "ocean" -> 0xFF7FD4FF
-                                    "cream" -> 0xFFE8A87C; "night" -> 0xFFF0C4DE; else -> 0xFFFF8AA0
+                                    "sakura" -> 0xFFFF7EB3L; "lavender" -> 0xFFC9A0FFL; "ocean" -> 0xFF7FD4FFL
+                                    "cream" -> 0xFFE8A87CL; "night" -> 0xFFF0C4DEL; else -> 0xFFFF8AA0L
                                 }) } }
                                 .padding(12.dp),
                             contentAlignment = Alignment.Center,

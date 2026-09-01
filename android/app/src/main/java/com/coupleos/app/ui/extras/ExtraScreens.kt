@@ -95,10 +95,10 @@ fun LoveNotesScreen(vm: ExtraViewModel = hiltViewModel()) {
         if (bundle.notes.isEmpty()) Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) { Text("یخچال خالیه — یک نوت کیوت بچسبون", color = TextTertiary) }
         else LazyColumn(Modifier.padding(pad).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(bundle.notes, key = { it.id }) { n ->
-                val bg = when (n.color) { "lemon" -> 0xFFFFF1B8; "mint" -> 0xFFC9F3DE; "sky" -> 0xFFCDE8FF; else -> 0xFFFFD6E0 }
+                val bg = when (n.color) { "lemon" -> 0xFFFFF1B8L; "mint" -> 0xFFC9F3DEL; "sky" -> 0xFFCDE8FFL; else -> 0xFFFFD6E0L }
                 Card(colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(bg)), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(16.dp)) {
-                        Text(n.text, color = androidx.compose.ui.graphics.Color(0xFF5A2433))
+                        Text(n.text, color = androidx.compose.ui.graphics.Color(0xFF5A2433L))
                         TextButton(onClick = { vm.extra.removeNote(n.id) }) { Text("حذف") }
                     }
                 }

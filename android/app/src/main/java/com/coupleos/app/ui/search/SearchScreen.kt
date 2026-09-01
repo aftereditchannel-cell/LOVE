@@ -1,5 +1,6 @@
 package com.coupleos.app.ui.search
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -112,10 +113,9 @@ fun SearchScreen(
                 else -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(hits) { r ->
                         Card(
-                            Modifier.fillMaxWidth(),
+                            Modifier.fillMaxWidth().clickable { onOpen(r.route) },
                             colors = CardDefaults.cardColors(containerColor = com.coupleos.app.ui.theme.Surface),
                             shape = RoundedCornerShape(12.dp),
-                            onClick = { onOpen(r.route) },
                         ) {
                             Column(Modifier.padding(12.dp)) {
                                 Text(r.type, color = com.coupleos.app.ui.theme.Primary, style = MaterialTheme.typography.labelSmall)

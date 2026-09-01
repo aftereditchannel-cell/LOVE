@@ -63,14 +63,14 @@ fun MoreScreen(navController: NavController) {
         MoreMenuItem(Icons.Outlined.Restaurant, stringResource(R.string.more_date_planner)) { navController.navigate(Screen.DatePlanner.route) }
         MoreMenuItem(Icons.Outlined.QuestionAnswer, stringResource(R.string.more_questions)) { navController.navigate(Screen.Questions.route) }
         MoreMenuItem(Icons.Outlined.Favorite, stringResource(R.string.more_relationship)) { navController.navigate(Screen.Relationship.route) }
-        MoreMenuItem(Icons.Outlined.AutoAwesome, "یخچال عشق") { navController.navigate(Screen.LoveNotes.route) }
+        MoreMenuItem(Icons.Outlined.Star, "یخچال عشق") { navController.navigate(Screen.LoveNotes.route) }
         MoreMenuItem(Icons.Outlined.FavoriteBorder, "بوس‌شمار") { navController.navigate(Screen.Kisses.route) }
         MoreMenuItem(Icons.Outlined.Mood, "حیوون دونفره") { navController.navigate(Screen.Pet.route) }
         MoreMenuItem(Icons.Outlined.Email, "شیشه تعریف") { navController.navigate(Screen.Jar.route) }
-        MoreMenuItem(Icons.Outlined.Star, "فال عشق") { navController.navigate(Screen.Fortune.route) }
-        MoreMenuItem(Icons.Outlined.SportsEsports, "بازی دونفره") { navController.navigate(Screen.Games.route) }
-        MoreMenuItem(Icons.Outlined.LocalFireDepartment, "عادت‌های دونفره") { navController.navigate(Screen.Habits.route) }
-        MoreMenuItem(Icons.Outlined.MusicNote, "آهنگ ما") { navController.navigate(Screen.Music.route) }
+        MoreMenuItem(Icons.Outlined.Favorite, "فال عشق") { navController.navigate(Screen.Fortune.route) }
+        MoreMenuItem(Icons.Outlined.SmartToy, "بازی دونفره") { navController.navigate(Screen.Games.route) }
+        MoreMenuItem(Icons.Outlined.CheckCircle, "عادت‌های دونفره") { navController.navigate(Screen.Habits.route) }
+        MoreMenuItem(Icons.Outlined.Star, "آهنگ ما") { navController.navigate(Screen.Music.route) }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -85,7 +85,7 @@ fun MoreScreen(navController: NavController) {
         SectionTitle("ابزار")
         MoreMenuItem(Icons.Outlined.SmartToy, stringResource(R.string.more_ai)) { navController.navigate(Screen.AI.route) }
         MoreMenuItem(Icons.Outlined.Search, "جستجو") { navController.navigate(Screen.Search.route) }
-        MoreMenuItem(Icons.Outlined.Palette, "کاستوم‌سازی") { navController.navigate(Screen.Customize.route) }
+        MoreMenuItem(Icons.Outlined.Settings, "کاستوم‌سازی") { navController.navigate(Screen.Customize.route) }
         MoreMenuItem(Icons.Outlined.Settings, stringResource(R.string.more_settings)) { navController.navigate(Screen.Settings.route) }
 
         Spacer(modifier = Modifier.height(80.dp))

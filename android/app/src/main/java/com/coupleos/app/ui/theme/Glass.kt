@@ -3,7 +3,6 @@ package com.coupleos.app.ui.theme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -12,7 +11,6 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.coupleos.app.ui.appearance.AppearanceState
 
-@Composable
 fun Modifier.glass(
     appearance: AppearanceState,
     shape: Shape = RoundedCornerShape(appearance.radius.dp),
@@ -24,7 +22,7 @@ fun Modifier.glass(
         .border(1.dp, Color.White.copy(alpha = 0.16f), shape)
 }
 
-fun couplePalette(theme: String, accent: Int): CouplePalette {
+fun couplePalette(theme: String, accent: Long): CouplePalette {
     val a = Color(accent)
     return when (theme) {
         "sakura" -> CouplePalette(

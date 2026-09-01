@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 import com.coupleos.app.ui.appearance.AppearanceState
 
 val LocalCouplePalette = staticCompositionLocalOf {
-    couplePalette("rose-glass", 0xFFFF8AA0)
+    couplePalette("rose-glass", 0xFFFF8AA0L)
 }
 
 @Composable

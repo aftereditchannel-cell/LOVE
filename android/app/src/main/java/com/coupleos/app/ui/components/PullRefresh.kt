@@ -33,7 +33,7 @@ fun CouplePullRefresh(
     val connection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.Drag && available.y < 0 && pull > 0f) {
+                if (source == NestedScrollSource.Drag && available.y < 0f && pull > 0f) {
                     val consumed = minOf(-available.y, pull)
                     pull -= consumed
                     return Offset(0f, -consumed)

@@ -180,8 +180,8 @@ private fun MemoryPane(extra: ExtraStore, modifier: Modifier) {
 private fun CatchPane(extra: ExtraStore, modifier: Modifier) {
     val best = extra.bundle.collectAsState().value.play.catchBest
     var running by remember { mutableStateOf(false) }
-    var left by remember { mutableIntStateOf(20) }
-    var score by remember { mutableIntStateOf(0) }
+    var left by remember { mutableStateOf(20) }
+    var score by remember { mutableStateOf(0) }
     var x by remember { mutableStateOf(0.42f) }
     var y by remember { mutableStateOf(0.36f) }
     LaunchedEffect(running) {
