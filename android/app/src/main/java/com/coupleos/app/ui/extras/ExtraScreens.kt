@@ -160,35 +160,9 @@ fun MusicScreen(vm: ExtraViewModel = hiltViewModel()) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GamesScreen() {
-    val truths = listOf(
-        "اولین چیزی که از پارتنرت عاشقش شدی چی بود؟",
-        "یک عادت کوچیکش که دلت براش ضعف میره؟",
-        "کدوم خاطره‌تون باید فیلم بشه؟",
-    )
-    val rathers = listOf("سفر جاده‌ای شبانه" to "هتل ساحلی", "نامه هر هفته" to "سورپرایز ناگهانی", "باران و چای" to "آفتاب و بستنی")
-    var i by remember { mutableIntStateOf(0) }
-    Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("بازی دونفره 🎲", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }) { pad ->
-        Column(Modifier.padding(pad).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp)) {
-                    Text("حقیقت", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
-                    Text(truths[i % truths.size], color = TextPrimary, style = MaterialTheme.typography.titleMedium)
-                }
-            }
-            Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("کدوم رو ترجیح می‌دی؟", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
-                    val r = rathers[i % rathers.size]
-                    Button(onClick = { i++ }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = Primary)) { Text(r.first) }
-                    Button(onClick = { i++ }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = Primary)) { Text(r.second) }
-                }
-            }
-            Button(onClick = { i++ }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Primary)) { Text("سؤال بعدی") }
-        }
-    }
+fun GamesScreen(vm: ExtraViewModel = hiltViewModel()) {
+    GameArcadeScreen(vm)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

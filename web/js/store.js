@@ -204,6 +204,52 @@ export const GAME_RATHER = [
   ["صبح زود با هم", "شب دیر با هم"],
 ];
 
+export const MEMORY_EMOJIS = ["💗", "🌸", "🍓", "🧸", "🐰", "🎀", "✨", "🧁"];
+
+export const RPS_CHOICES = [
+  { id: "flower", emoji: "🌸", name: "گل" },
+  { id: "teddy", emoji: "🧸", name: "تدی" },
+  { id: "bow", emoji: "🎀", name: "پاپیون" },
+];
+
+/** flower beats teddy, teddy beats bow, bow beats flower */
+export function rpsBeats(a, b) {
+  if (a === b) return 0;
+  if ((a === "flower" && b === "teddy") || (a === "teddy" && b === "bow") || (a === "bow" && b === "flower")) return 1;
+  return -1;
+}
+
+export const KNOW_ME = [
+  { q: "صبحونه مورد علاقه‌ش چیه؟", options: ["نان و پنیر و چای", "کرپ و توت‌فرنگی", "هرچی تو بپزی"] },
+  { q: "اگر بارون بیاد چیکار می‌کنه؟", options: ["چای و فیلم", "پیاده‌روی خیس", "عکس از قطره‌ها"] },
+  { q: "کادوی رویایی‌ش چیه؟", options: ["نامه دست‌نویس", "گل غیرمنتظره", "سفر غافلگیرکننده"] },
+  { q: "رنگ حال‌خوب‌کن‌ش؟", options: ["صورتی پاستلی", "یاسی", "کرم عسلی"] },
+  { q: "قرار ایده‌آل؟", options: ["شام شمع", "پیک‌نیک غروب", "اسپا خونگی"] },
+  { q: "چی بیشتر لوس‌ش می‌کنه؟", options: ["یک بوس الکی", "صدازدن با اسم کیوت", "بغل طولانی"] },
+];
+
+export function shuffle(list) {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+export function tttWinner(board) {
+  const lines = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+    [0, 4, 8], [2, 4, 6],
+  ];
+  for (const [a, b, c] of lines) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
+  }
+  if (board.every(Boolean)) return "draw";
+  return null;
+}
+
 export const LOVE_LANGUAGES = ["حرفای تأییدکننده", "وقت باکیفیت", "هدیه", "خدمات", "لمس فیزیکی"];
 
 export const MOODS = [
@@ -287,7 +333,16 @@ export function defaultState() {
     playlist: [],
     dates: [],
     story: [],
-    games: { plays: 0, last: null },
+    games: {
+      plays: 0,
+      last: null,
+      soloBest: { memoryMoves: 0, catchScore: 0 },
+      duo: { tttMe: 0, tttPartner: 0, rpsMe: 0, rpsPartner: 0 },
+      memory: null,
+      ttt: null,
+      rps: null,
+      quiz: null,
+    },
     kisses: { sent: 0, received: 0, last: null },
     compliments: [],
     capsules: [],
@@ -324,7 +379,12 @@ export class CoupleStore {
         auth: { ...base.auth, ...(parsed.auth || {}) },
         profile: { ...base.profile, ...(parsed.profile || {}) },
         appearance: { ...base.appearance, ...(parsed.appearance || {}) },
-        games: { ...base.games, ...(parsed.games || {}) },
+        games: {
+          ...base.games,
+          ...(parsed.games || {}),
+          soloBest: { ...base.games.soloBest, ...((parsed.games && parsed.games.soloBest) || {}) },
+          duo: { ...base.games.duo, ...((parsed.games && parsed.games.duo) || {}) },
+        },
         kisses: { ...base.kisses, ...(parsed.kisses || {}) },
         pet: { ...base.pet, ...(parsed.pet || {}) },
       };
@@ -781,6 +841,198 @@ export class CoupleStore {
     if (score >= 55) return { emoji: "😊", label: "خوشحال" };
     if (score >= 35) return { emoji: "🥺", label: "یه کم دلتنگ" };
     return { emoji: "😢", label: "گرسنه و غمگین" };
+  }
+
+  bumpPlays() {
+    this.data.games.plays = (this.data.games.plays || 0) + 1;
+    this.data.games.last = nowISO();
+    this.persist();
+  }
+
+  startMemory() {
+    const cards = shuffle([...MEMORY_EMOJIS, ...MEMORY_EMOJIS]).map((emoji, i) => ({
+      id: i,
+      emoji,
+      flipped: false,
+      matched: false,
+    }));
+    this.data.games.memory = { cards, first: null, moves: 0, matched: 0, won: false, lock: false };
+    this.persist();
+    return this.data.games.memory;
+  }
+
+  flipMemory(index) {
+    const g = this.data.games.memory;
+    if (!g || g.won || g.lock) return g;
+    const card = g.cards[index];
+    if (!card || card.flipped || card.matched) return g;
+    card.flipped = true;
+    if (g.first == null) {
+      g.first = index;
+      this.persist();
+      return g;
+    }
+    g.moves += 1;
+    const a = g.cards[g.first];
+    if (a.emoji === card.emoji && g.first !== index) {
+      a.matched = true;
+      card.matched = true;
+      g.matched += 1;
+      g.first = null;
+      if (g.matched >= MEMORY_EMOJIS.length) {
+        g.won = true;
+        const best = this.data.games.soloBest.memoryMoves || 0;
+        if (!best || g.moves < best) this.data.games.soloBest.memoryMoves = g.moves;
+        this.bumpPlays();
+      }
+      this.persist();
+      return g;
+    }
+    g.lock = true;
+    this.persist();
+    return g;
+  }
+
+  memoryUnflip() {
+    const g = this.data.games.memory;
+    if (!g) return g;
+    g.cards.forEach((c) => {
+      if (!c.matched) c.flipped = false;
+    });
+    g.first = null;
+    g.lock = false;
+    this.persist();
+    return g;
+  }
+
+  saveCatchScore(score) {
+    const best = this.data.games.soloBest.catchScore || 0;
+    if (score > best) this.data.games.soloBest.catchScore = score;
+    this.bumpPlays();
+    this.persist();
+    return this.data.games.soloBest.catchScore;
+  }
+
+  startTtt(mode = "hotseat") {
+    this.data.games.ttt = {
+      board: ["", "", "", "", "", "", "", "", ""],
+      turn: "me",
+      mode,
+      winner: null,
+    };
+    this.persist();
+    return this.data.games.ttt;
+  }
+
+  playTtt(index, as = null) {
+    const g = this.data.games.ttt;
+    if (!g || g.winner) return g;
+    if (g.board[index]) return g;
+    const mark = as || g.turn;
+    if (g.mode !== "hotseat" && mark !== g.turn) return g;
+    g.board[index] = mark;
+    g.winner = tttWinner(g.board);
+    if (g.winner === "me") this.data.games.duo.tttMe += 1;
+    if (g.winner === "partner") this.data.games.duo.tttPartner += 1;
+    if (!g.winner) {
+      g.turn = g.turn === "me" ? "partner" : "me";
+      if (g.mode === "cpu" && g.turn === "partner") {
+        const empty = g.board.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0);
+        const pick = empty[Math.floor(Math.random() * empty.length)];
+        if (pick != null) {
+          g.board[pick] = "partner";
+          g.winner = tttWinner(g.board);
+          if (g.winner === "partner") this.data.games.duo.tttPartner += 1;
+          if (!g.winner) g.turn = "me";
+        }
+      }
+    }
+    if (g.winner) this.bumpPlays();
+    else this.persist();
+    return g;
+  }
+
+  startRps() {
+    this.data.games.rps = { me: null, partner: null, result: null };
+    this.persist();
+    return this.data.games.rps;
+  }
+
+  lockRps(who, choice) {
+    const g = this.data.games.rps || this.startRps();
+    if (g.result) return g;
+    if (who === "partner") g.partner = choice;
+    else g.me = choice;
+    if (g.me && g.partner) {
+      const r = rpsBeats(g.me, g.partner);
+      g.result = r === 0 ? "draw" : r > 0 ? "me" : "partner";
+      if (g.result === "me") this.data.games.duo.rpsMe += 1;
+      if (g.result === "partner") this.data.games.duo.rpsPartner += 1;
+      this.bumpPlays();
+    } else {
+      this.persist();
+    }
+    return g;
+  }
+
+  startQuiz() {
+    this.data.games.quiz = { index: 0, my: null, partner: null, revealed: false, matches: 0 };
+    this.persist();
+    return this.data.games.quiz;
+  }
+
+  answerQuiz(who, option) {
+    const g = this.data.games.quiz || this.startQuiz();
+    if (g.revealed) return g;
+    if (who === "partner") g.partner = option;
+    else g.my = option;
+    if (g.my != null && g.partner != null) {
+      g.revealed = true;
+      if (g.my === g.partner) g.matches += 1;
+    }
+    this.persist();
+    return g;
+  }
+
+  nextQuiz() {
+    const g = this.data.games.quiz;
+    if (!g) return this.startQuiz();
+    g.index = (g.index + 1) % KNOW_ME.length;
+    g.my = null;
+    g.partner = null;
+    g.revealed = false;
+    this.bumpPlays();
+    return g;
+  }
+
+  exportPlayCode() {
+    const payload = {
+      ttt: this.data.games.ttt,
+      rps: this.data.games.rps,
+      quiz: this.data.games.quiz,
+      duo: this.data.games.duo,
+    };
+    try {
+      return btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    } catch {
+      return "";
+    }
+  }
+
+  importPlayCode(code) {
+    try {
+      const raw = String(code || "").trim();
+      if (!raw) return { ok: false, error: "کد خالی است" };
+      const payload = JSON.parse(decodeURIComponent(escape(atob(raw))));
+      if (payload.ttt) this.data.games.ttt = payload.ttt;
+      if (payload.rps) this.data.games.rps = payload.rps;
+      if (payload.quiz) this.data.games.quiz = payload.quiz;
+      if (payload.duo) this.data.games.duo = { ...this.data.games.duo, ...payload.duo };
+      this.persist();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "کد بازی نامعتبر است" };
+    }
   }
 
   aiReply(prompt) {

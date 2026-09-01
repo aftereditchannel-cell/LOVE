@@ -1,4 +1,4 @@
-import { CoupleStore, THEMES, MOODS, DATE_IDEAS, GAME_TRUTH, GAME_RATHER, LOVE_LANGUAGES, PETS, CHAT_STICKERS, moodEmoji, daysBetween, todayISO } from "./store.js";
+import { CoupleStore, THEMES, MOODS, DATE_IDEAS, GAME_TRUTH, GAME_RATHER, LOVE_LANGUAGES, PETS, CHAT_STICKERS, RPS_CHOICES, KNOW_ME, moodEmoji, daysBetween, todayISO } from "./store.js";
 import { Biometrics, fingerprintSvg } from "./biometrics.js";
 
 const store = new CoupleStore();
@@ -21,6 +21,7 @@ const state = {
   ai: { prompt: "", reply: "" },
   refreshing: false,
   drawn: "",
+  catcher: { running: false, score: 0, left: 20, x: 42, y: 38 },
 };
 
 function toast(msg) {
@@ -47,6 +48,7 @@ function applyAppearance() {
 }
 
 function go(route, extra = {}) {
+  if (state.route === "game-catch" && route !== "game-catch") stopCatcher();
   state.route = route;
   Object.assign(state, extra);
   if (route === "lock") {
@@ -802,11 +804,172 @@ function screenNotes() {
   </div>`;
 }
 
+function gameCard(route, emoji, title, tag) {
+  return `<button class="game-tile" data-act="go" data-route="${route}">
+    <span class="e">${emoji}</span>
+    <b>${title}</b>
+    <span class="tag">${tag}</span>
+  </button>`;
+}
+
 function screenGames() {
+  const g = store.data.games || {};
+  const duo = g.duo || {};
+  const best = g.soloBest || {};
+  return `<div class="screen">
+    ${topBar("اتاق بازی 🎮", "یه‌نفره کیوت + دونفره آنلاین")}
+    <div class="card" style="text-align:center">
+      <div class="tiny faint">امتیاز دونفره</div>
+      <b>💗 ${duo.tttMe || 0} — ${duo.tttPartner || 0} 🌸</b>
+      <div class="tiny muted">دوز · گل‌تدی ${duo.rpsMe || 0}:${duo.rpsPartner || 0} · رکورد قلب ${best.catchScore || 0}</div>
+    </div>
+    <div class="gap"></div>
+    <div class="tiny muted">یه‌نفره — برای دل خودت</div>
+    <div class="game-grid">
+      ${gameCard("game-memory", "🧸", "حافظه قلب‌ها", "یه‌نفره")}
+      ${gameCard("game-catch", "💗", "باران قلب", "یه‌نفره")}
+    </div>
+    <div class="gap"></div>
+    <div class="tiny muted">دونفره آنلاین — نوبتی یا با کد</div>
+    <div class="game-grid">
+      ${gameCard("game-ttt", "🌸", "دوز عاشقانه", "آنلاین")}
+      ${gameCard("game-rps", "🎀", "گل و تدی", "آنلاین")}
+      ${gameCard("game-quiz", "💌", "چقدر منو می‌شناسی", "آنلاین")}
+      ${gameCard("game-truth", "🌙", "حقیقت نرم", "دونفره")}
+    </div>
+    <div class="gap"></div>
+    <div class="card col">
+      <div class="tiny faint">اتاق آنلاین</div>
+      <p class="muted tiny">کد بازی رو بفرست تا پارتنر همون صفحه رو ببینه — یا دو تب همزمان باز کنید.</p>
+      <button class="btn ghost block" data-act="copy-play">کپی کد اتاق 💌</button>
+      <input class="input" id="playCode" placeholder="کد پارتنر را بچسبون" />
+      <button class="btn block" data-act="join-play">ورود به اتاق</button>
+    </div>
+    <p class="tiny faint" style="text-align:center;margin-top:12px">${g.plays || 0} دور بازی کردید</p>
+  </div>`;
+}
+
+function screenGameMemory() {
+  const g = store.data.games.memory;
+  if (!g) {
+    return `<div class="screen">${topBar("حافظه قلب‌ها 🧸", "جفت کیوت‌ها را پیدا کن")}
+      <div class="card col" style="text-align:center">
+        <div style="font-size:52px">🧁</div>
+        <p>۸ جفت قلب و گل و تدی. کمتر حرکت = قشنگ‌تر.</p>
+        <button class="btn block" data-act="memory-new">شروع</button>
+      </div></div>`;
+  }
+  return `<div class="screen">
+    ${topBar("حافظه قلب‌ها 🧸", g.won ? "همه جفت‌ها پیدا شد 💗" : `${g.moves} حرکت · ${g.matched}/۸ جفت`)}
+    <div class="mem-grid">
+      ${g.cards.map((c, i) => `<button class="mem-card ${c.flipped || c.matched ? "open" : ""} ${c.matched ? "ok" : ""}" data-act="memory-flip" data-i="${i}">${c.flipped || c.matched ? c.emoji : "♡"}</button>`).join("")}
+    </div>
+    <div class="gap"></div>
+    ${g.won ? `<div class="card" style="text-align:center">آفرین گل 🌸 رکورد: ${store.data.games.soloBest.memoryMoves || g.moves} حرکت</div>` : ""}
+    <button class="btn ghost block" data-act="memory-new">دور جدید</button>
+  </div>`;
+}
+
+function screenGameCatch() {
+  const c = state.catcher;
+  return `<div class="screen">
+    ${topBar("باران قلب 💗", c.running ? `${c.left} ثانیه` : "۲۰ ثانیه قلب بزن")}
+    <div class="card" style="text-align:center"><b>امتیاز ${c.score}</b><div class="tiny muted">بهترین: ${store.data.games.soloBest.catchScore || 0}</div></div>
+    <div class="gap"></div>
+    <div class="catch-arena" id="catchArena">
+      ${c.running ? `<button class="catch-heart" data-act="catch-tap" style="left:${c.x}%;top:${c.y}%">💗</button>` : `<p class="faint" style="padding-top:70px">قلب‌ها از آسمون میان ✨</p>`}
+    </div>
+    <div class="gap"></div>
+    ${c.running ? "" : `<button class="btn block" data-act="catch-start">ببار قلب</button>`}
+  </div>`;
+}
+
+function tttMark(v) {
+  if (v === "me") return "💗";
+  if (v === "partner") return "🌸";
+  return "";
+}
+
+function screenGameTtt() {
+  const g = store.data.games.ttt;
+  const name = (who) => (who === "me" ? store.myName() : store.partnerName());
+  if (!g) {
+    return `<div class="screen">${topBar("دوز عاشقانه 🌸", "آنلاین دونفره")}
+      <p class="muted">تو 💗 هستی، ${esc(store.partnerName())} 🌸. نوبتی بازی کنید یا کد اتاق بفرستید.</p>
+      <button class="btn block" data-act="ttt-new" data-mode="hotseat">دونفره روی یک گوشی</button>
+      <div class="gap"></div>
+      <button class="btn ghost block" data-act="ttt-new" data-mode="online">اتاق آنلاین (کد)</button>
+      <div class="gap"></div>
+      <button class="btn ghost block" data-act="ttt-new" data-mode="cpu">یه‌نفره با دنیای کوچیک</button>
+    </div>`;
+  }
+  const turnName = g.winner ? "" : name(g.turn);
+  const msg = g.winner === "draw" ? "مساوی شد 🤍" : g.winner === "me" ? `${store.myName()} برنده 💗` : g.winner === "partner" ? `${store.partnerName()} برنده 🌸` : `نوبت ${turnName}`;
+  return `<div class="screen">
+    ${topBar("دوز عاشقانه 🌸", msg)}
+    <div class="ttt-grid">
+      ${g.board.map((v, i) => `<button class="ttt-cell" data-act="ttt-play" data-i="${i}">${tttMark(v)}</button>`).join("")}
+    </div>
+    <div class="gap"></div>
+    <button class="btn ghost block" data-act="copy-play">کد اتاق برای پارتنر</button>
+    <div class="gap"></div>
+    <button class="btn block" data-act="ttt-new" data-mode="${g.mode}">دور جدید</button>
+  </div>`;
+}
+
+function screenGameRps() {
+  const g = store.data.games.rps || { me: null, partner: null, result: null };
+  const label = (id) => RPS_CHOICES.find((c) => c.id === id);
+  const res = !g.result ? "هر کس پنهانی انتخاب کنه 🎀" : g.result === "draw" ? "جفت‌تون قشنگ بود — مساوی 🤍" : g.result === "me" ? `${store.myName()} برد 💗` : `${store.partnerName()} برد 🌸`;
+  return `<div class="screen">
+    ${topBar("گل و تدی 🎀", "آنلاین · گل > تدی > پاپیون > گل")}
+    <div class="card" style="text-align:center"><b>${res}</b></div>
+    <div class="gap"></div>
+    <div class="tiny muted">انتخاب تو</div>
+    <div class="rps-row">
+      ${RPS_CHOICES.map((c) => `<button class="rps-btn ${g.me === c.id ? "on" : ""}" data-act="rps-lock" data-who="me" data-c="${c.id}">${c.emoji}<span>${c.name}</span></button>`).join("")}
+    </div>
+    <div class="gap"></div>
+    <div class="tiny muted">انتخاب ${esc(store.partnerName())} ${g.partner && !g.result ? "✓ ثبت شد" : ""}</div>
+    <div class="rps-row">
+      ${RPS_CHOICES.map((c) => `<button class="rps-btn ${g.partner === c.id ? "on" : ""}" data-act="rps-lock" data-who="partner" data-c="${c.id}">${g.result ? c.emoji : "❔"}<span>${c.name}</span></button>`).join("")}
+    </div>
+    ${g.result ? `<div class="card" style="text-align:center;margin-top:12px">${label(g.me)?.emoji || ""} در برابر ${label(g.partner)?.emoji || ""}</div>` : ""}
+    <div class="gap"></div>
+    <button class="btn ghost block" data-act="copy-play">کد اتاق</button>
+    <div class="gap"></div>
+    <button class="btn block" data-act="rps-new">دور جدید</button>
+  </div>`;
+}
+
+function screenGameQuiz() {
+  const g = store.data.games.quiz || { index: 0, my: null, partner: null, revealed: false, matches: 0 };
+  const item = KNOW_ME[g.index % KNOW_ME.length];
+  return `<div class="screen">
+    ${topBar("چقدر منو می‌شناسی 💌", `${g.matches || 0} جواب جفت`)}
+    <div class="card col">
+      <div class="tiny faint">سؤال ${g.index + 1}</div>
+      <h3>${esc(item.q)}</h3>
+    </div>
+    <div class="gap"></div>
+    <div class="tiny muted">جواب تو</div>
+    ${item.options.map((o, i) => `<button class="person-btn ${g.my === i ? "on" : ""}" data-act="quiz-ans" data-who="me" data-i="${i}">${esc(o)}</button>`).join("")}
+    <div class="gap"></div>
+    <div class="tiny muted">حدس ${esc(store.partnerName())}</div>
+    ${item.options.map((o, i) => `<button class="person-btn ${g.partner === i ? "on" : ""}" data-act="quiz-ans" data-who="partner" data-i="${i}">${g.revealed ? esc(o) : "انتخاب پنهان"}</button>`).join("")}
+    ${g.revealed ? `<div class="card" style="text-align:center;margin-top:12px">${g.my === g.partner ? "جفت شدین 💗 همینو دوست داره" : "این‌بار فرق داشت — بپرس چرا 🌸"}</div>` : ""}
+    <div class="gap"></div>
+    <button class="btn ghost block" data-act="copy-play">کد اتاق</button>
+    <div class="gap"></div>
+    <button class="btn block" data-act="quiz-next">سؤال بعدی</button>
+  </div>`;
+}
+
+function screenGameTruth() {
   const truth = GAME_TRUTH[store.data.games.plays % GAME_TRUTH.length];
   const rather = GAME_RATHER[store.data.games.plays % GAME_RATHER.length];
   return `<div class="screen">
-    ${topBar("بازی دونفره 🎲")}
+    ${topBar("حقیقت نرم 🌙", "سوالای کیوت دونفره")}
     <div class="card col">
       <div class="tiny faint">حقیقت</div>
       <h3>${esc(truth)}</h3>
@@ -819,7 +982,6 @@ function screenGames() {
     </div>
     <div class="gap"></div>
     <button class="btn block" data-act="next-game">سؤال بعدی</button>
-    <p class="tiny faint" style="text-align:center">${store.data.games.plays} دور بازی کردید</p>
   </div>`;
 }
 
@@ -879,6 +1041,12 @@ const SCREENS = {
   settings: screenSettings,
   notes: screenNotes,
   games: screenGames,
+  "game-memory": screenGameMemory,
+  "game-catch": screenGameCatch,
+  "game-ttt": screenGameTtt,
+  "game-rps": screenGameRps,
+  "game-quiz": screenGameQuiz,
+  "game-truth": screenGameTruth,
   habits: screenHabits,
   music: screenMusic,
 };
@@ -1372,11 +1540,94 @@ function onAct(act, el) {
       break;
     case "next-game":
     case "pick-rather":
-      store.data.games.plays += 1;
-      store.persist();
+      store.bumpPlays();
       toast("عاشقانه بود 💗");
       render();
       break;
+    case "memory-new":
+      store.startMemory();
+      render();
+      break;
+    case "memory-flip": {
+      const mem = store.flipMemory(Number(el.dataset.i));
+      render();
+      if (mem?.lock) {
+        setTimeout(() => {
+          store.memoryUnflip();
+          render();
+        }, 700);
+      }
+      if (mem?.won) {
+        burst(window.innerWidth / 2, 180, ["🧸", "💗", "🌸"]);
+        toast("همه جفت‌ها پیدا شد 🧁");
+      }
+      break;
+    }
+    case "catch-start":
+      startCatcher();
+      break;
+    case "catch-tap":
+      if (!state.catcher.running) break;
+      state.catcher.score += 1;
+      state.catcher.x = 8 + Math.random() * 72;
+      state.catcher.y = 10 + Math.random() * 62;
+      burst(el.getBoundingClientRect().left, el.getBoundingClientRect().top, ["💗", "✨"]);
+      render();
+      break;
+    case "ttt-new":
+      store.startTtt(el.dataset.mode || "hotseat");
+      syncPlay();
+      render();
+      break;
+    case "ttt-play": {
+      const before = store.data.games.ttt?.turn;
+      store.playTtt(Number(el.dataset.i));
+      const w = store.data.games.ttt?.winner;
+      if (w && w !== "draw") burst(window.innerWidth / 2, 200, ["💗", "🌸", "✨"]);
+      if (before && store.data.games.ttt?.turn !== before) syncPlay();
+      render();
+      break;
+    }
+    case "rps-new":
+      store.startRps();
+      syncPlay();
+      render();
+      break;
+    case "rps-lock":
+      store.lockRps(el.dataset.who, el.dataset.c);
+      syncPlay();
+      render();
+      break;
+    case "quiz-ans":
+      store.answerQuiz(el.dataset.who, Number(el.dataset.i));
+      syncPlay();
+      render();
+      break;
+    case "quiz-next":
+      if (!store.data.games.quiz) store.startQuiz();
+      else store.nextQuiz();
+      syncPlay();
+      render();
+      break;
+    case "copy-play": {
+      const code = store.exportPlayCode();
+      if (navigator.clipboard?.writeText) navigator.clipboard.writeText(code).catch(() => {});
+      store.sendMessage(`🎮 کد اتاق بازی:\n${code}`);
+      toast("کد توی چت هم فرستاده شد 💌");
+      break;
+    }
+    case "join-play": {
+      const r = store.importPlayCode(val("playCode") || document.getElementById("playCode")?.value);
+      toast(r.ok ? "وارد اتاق شدی 🌸" : r.error);
+      if (r.ok) {
+        const g = store.data.games;
+        if (g.ttt?.board?.some(Boolean) || g.ttt?.mode) go("game-ttt");
+        else if (g.rps?.me || g.rps?.partner) go("game-rps");
+        else if (g.quiz) go("game-quiz");
+        else go("games");
+      } else render();
+      break;
+    }
     case "add-memory":
       openSheet(`<h3>خاطره جدید</h3>${fieldHtml("f-title", "عنوان")}${fieldHtml("f-desc", "توضیح")}${fieldHtml("f-loc", "مکان")}
         <div class="gap"></div><button class="btn block" data-act="save-memory">ذخیره</button><button class="btn ghost block" data-act="close">انصراف</button>`);
@@ -1533,145 +1784,53 @@ function val(id) {
   return document.getElementById(id)?.value.trim() || "";
 }
 
-function bootHearts() {
-  const root = document.getElementById("hearts");
-  root.innerHTML = "";
-  for (let i = 0; i < 14; i++) {
-    const s = document.createElement("span");
-    s.className = "heart-p";
-    s.textContent = ["💗", "✨", "🌸", "💞"][i % 4];
-    s.style.left = `${Math.random() * 100}%`;
-    s.style.animationDuration = `${7 + Math.random() * 6}s`;
-    s.style.animationDelay = `${Math.random() * 6}s`;
-    s.style.fontSize = `${12 + Math.random() * 10}px`;
-    root.appendChild(s);
-  }
-}
-
-function setupPullRefresh() {
-  const el = appEl();
-  let startY = 0;
-  let pulling = false;
-  el.addEventListener(
-    "touchstart",
-    (e) => {
-      if (el.scrollTop <= 0) {
-        startY = e.touches[0].clientY;
-        pulling = true;
-      }
-    },
-    { passive: true }
-  );
-  el.addEventListener(
-    "touchmove",
-    (e) => {
-      if (!pulling) return;
-      const dy = e.touches[0].clientY - startY;
-      if (dy > 24) document.getElementById("ptr").classList.add("show");
-    },
-    { passive: true }
-  );
-  el.addEventListener("touchend", (e) => {
-    if (!pulling) return;
-    pulling = false;
-    const dy = (e.changedTouches[0]?.clientY || 0) - startY;
-    if (dy > 64 && el.scrollTop <= 0) refreshData();
-    else document.getElementById("ptr").classList.remove("show");
-  });
-}
-
-function initialRoute() {
-  if (!store.data.auth.paired) return "setup";
-  if (!store.data.auth.lockSetup) return "pin-setup";
-  return "lock";
-}
-
-function init() {
-  applyAppearance();
-  bootHearts();
-  document.getElementById("orbs").innerHTML = `<div class="orb a"></div><div class="orb b"></div><div class="orb c"></div>`;
-  document.body.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-act]");
-    if (!btn) {
-      if (e.target.id === "modal") closeSheet();
-      return;
-    }
-    onAct(btn.dataset.act, btn);
-  });
-  document.body.addEventListener("input", (e) => {
-    const t = e.target;
-    if (t.dataset.act === "mood-sl") {
-      const cur = store.todayMood("me") || { mood: "معمولی", user: "me" };
-      store.saveMood({ ...cur, [t.dataset.k]: Number(t.value) });
-    }
-    if (t.dataset.act === "glass") {
-      store.setAppearance({ glass: Number(t.value) });
-      applyAppearance();
-    }
-    if (t.dataset.act === "radius") {
-      store.setAppearance({ radius: Number(t.value) });
-      applyAppearance();
-    }
-    if (t.dataset.act === "font") {
-      store.setAppearance({ fontScale: Number(t.value) });
-      applyAppearance();
-    }
-  });
-  document.body.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && state.route === "chat") {
-      const input = document.getElementById("chatInput");
-      if (document.activeElement === input) {
-        store.sendMessage(input.value);
-        render();
-      }
-    }
-  });
-  window.addEventListener("hashchange", () => {
-    const r = location.hash.replace("#", "");
-    if (r && SCREENS[r] && r !== state.route) {
-      state.route = r;
-      render();
-    }
-  });
-  setupPullRefresh();
-  state.route = "splash";
+function startCatcher() {
+  clearInterval(startCatcher._t);
+  state.catcher = { running: true, score: 0, left: 20, x: 42, y: 36 };
   render();
-  setTimeout(() => {
-    const next = initialRoute();
-    go(next);
-  }, 1200);
+  startCatcher._t = setInterval(() => {
+    if (!state.catcher.running) return;
+    state.catcher.left -= 1;
+    if (state.catcher.left <= 0) {
+      clearInterval(startCatcher._t);
+      state.catcher.running = false;
+      store.saveCatchScore(state.catcher.score);
+      toast(`باران تموم شد — ${state.catcher.score} قلب 💗`);
+    }
+    render();
+  }, 1000);
 }
 
-init();
+function stopCatcher() {
+  clearInterval(startCatcher._t);
+  if (state.catcher) state.catcher.running = false;
+}
 
-export { store, state };
-�نده")}${fieldHtml("f-note", "نوت")}
-        <div class="gap"></div><button class="btn block" data-act="save-song">افزودن</button><button class="btn ghost block" data-act="close">انصراف</button>`);
-      break;
-    case "save-song":
-      store.add("playlist", { title: val("f-title") || "آهنگ", artist: val("f-artist"), note: val("f-note") });
-      closeSheet();
-      render();
-      break;
-    case "add-story":
-      openSheet(`<h3>نقطه داستان</h3>${fieldHtml("f-title", "عنوان")}${fieldHtml("f-date", "تاریخ YYYY-MM-DD")}${fieldHtml("f-desc", "متن")}
-        <div class="gap"></div><button class="btn block" data-act="save-story">افزودن</button><button class="btn ghost block" data-act="close">انصراف</button>`);
-      break;
-    case "save-story":
-      store.add("story", { title: val("f-title") || "لحظه", date: val("f-date") || todayISO(), text: val("f-desc") });
-      closeSheet();
-      render();
-      break;
-    case "close":
-      closeSheet();
-      break;
-    default:
-      break;
+function syncPlay() {
+  try {
+    syncPlay._ch = syncPlay._ch || new BroadcastChannel("coupleos-play");
+    syncPlay._ch.postMessage({ at: Date.now() });
+  } catch {
+    /* older browsers */
   }
 }
 
-function val(id) {
-  return document.getElementById(id)?.value.trim() || "";
+function listenPlay() {
+  try {
+    const ch = new BroadcastChannel("coupleos-play");
+    ch.onmessage = () => {
+      store.data = store.load();
+      if (String(state.route).startsWith("game")) render();
+    };
+  } catch {
+    /* ignore */
+  }
+  window.addEventListener("storage", (e) => {
+    if (e.key === "coupleos_v2") {
+      store.data = store.load();
+      if (String(state.route).startsWith("game") || state.route === "games") render();
+    }
+  });
 }
 
 function bootHearts() {
@@ -1730,6 +1889,7 @@ function initialRoute() {
 function init() {
   applyAppearance();
   bootHearts();
+  listenPlay();
   document.getElementById("orbs").innerHTML = `<div class="orb a"></div><div class="orb b"></div><div class="orb c"></div>`;
   document.body.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-act]");
@@ -1770,6 +1930,7 @@ function init() {
   window.addEventListener("hashchange", () => {
     const r = location.hash.replace("#", "");
     if (r && SCREENS[r] && r !== state.route) {
+      if (state.route === "game-catch" && r !== "game-catch") stopCatcher();
       state.route = r;
       render();
     }

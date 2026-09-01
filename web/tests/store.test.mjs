@@ -7,6 +7,9 @@ import {
   daysBetween,
   moodEmoji,
   todayISO,
+  rpsBeats,
+  tttWinner,
+  STORE_KEY,
 } from "../js/store.js";
 
 function fresh() {
@@ -210,4 +213,81 @@ test("candy theme exists", () => {
   s.setAppearance({ theme: "candy" });
   assert.equal(s.data.appearance.theme, "candy");
   assert.equal(s.data.appearance.accent, "#ff9ec8");
+});
+
+test("memory hearts match a cute pair", () => {
+  const s = fresh();
+  const g = s.startMemory();
+  assert.equal(g.cards.length, 16);
+  const emoji = g.cards[0].emoji;
+  const i2 = g.cards.findIndex((c, i) => i !== 0 && c.emoji === emoji);
+  s.flipMemory(0);
+  s.flipMemory(i2);
+  assert.equal(s.data.games.memory.matched, 1);
+  assert.equal(s.data.games.memory.cards[0].matched, true);
+  assert.equal(s.data.games.memory.cards[i2].matched, true);
+});
+
+test("tic-tac-toe hearts win and persist score", () => {
+  const s = fresh();
+  s.startTtt("hotseat");
+  s.playTtt(0);
+  s.playTtt(3);
+  s.playTtt(1);
+  s.playTtt(4);
+  s.playTtt(2);
+  assert.equal(s.data.games.ttt.winner, "me");
+  assert.equal(s.data.games.duo.tttMe, 1);
+  assert.equal(tttWinner(["me", "me", "me", "partner", "partner", "", "", "", ""]), "me");
+  assert.equal(tttWinner(["me", "partner", "me", "me", "partner", "partner", "partner", "me", "me"]), "draw");
+});
+
+test("flower teddy bow rps", () => {
+  assert.equal(rpsBeats("flower", "teddy"), 1);
+  assert.equal(rpsBeats("teddy", "bow"), 1);
+  assert.equal(rpsBeats("bow", "flower"), 1);
+  assert.equal(rpsBeats("flower", "flower"), 0);
+  const s = fresh();
+  s.startRps();
+  s.lockRps("me", "flower");
+  assert.equal(s.data.games.rps.result, null);
+  s.lockRps("partner", "teddy");
+  assert.equal(s.data.games.rps.result, "me");
+  assert.equal(s.data.games.duo.rpsMe, 1);
+  s.lockRps("me", "bow");
+  assert.equal(s.data.games.rps.result, "me");
+});
+
+test("know-me quiz and room code roundtrip", () => {
+  const s = fresh();
+  s.startQuiz();
+  s.answerQuiz("me", 1);
+  s.answerQuiz("partner", 1);
+  assert.equal(s.data.games.quiz.revealed, true);
+  assert.equal(s.data.games.quiz.matches, 1);
+  const code = s.exportPlayCode();
+  assert.ok(code.length > 8);
+  const s2 = fresh();
+  assert.equal(s2.importPlayCode(code).ok, true);
+  assert.equal(s2.data.games.quiz.matches, 1);
+  assert.equal(s2.importPlayCode("!!!").ok, false);
+  assert.equal(s2.importPlayCode("").ok, false);
+});
+
+test("heart catch keeps best score", () => {
+  const s = fresh();
+  s.saveCatchScore(4);
+  s.saveCatchScore(9);
+  s.saveCatchScore(3);
+  assert.equal(s.data.games.soloBest.catchScore, 9);
+  assert.ok(s.data.games.plays >= 3);
+});
+
+test("old games payload merges nested scores", () => {
+  const mem = memoryStorage();
+  mem.setItem(STORE_KEY, JSON.stringify({ games: { plays: 3 } }));
+  const s = new CoupleStore(mem);
+  assert.equal(s.data.games.plays, 3);
+  assert.equal(s.data.games.soloBest.catchScore, 0);
+  assert.equal(s.data.games.duo.tttMe, 0);
 });

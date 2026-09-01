@@ -1,6 +1,7 @@
 package com.coupleos.app.data.local
 
 import android.content.Context
+import android.util.Base64
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,54 @@ data class PetState(
 )
 
 @Serializable
+data class MemCard(val emoji: String, val flipped: Boolean = false, val matched: Boolean = false)
+
+@Serializable
+data class GamePlay(
+    val plays: Int = 0,
+    val memoryMovesBest: Int = 0,
+    val catchBest: Int = 0,
+    val tttMe: Int = 0,
+    val tttPartner: Int = 0,
+    val rpsMe: Int = 0,
+    val rpsPartner: Int = 0,
+    val memCards: List<MemCard> = emptyList(),
+    val memFirst: Int = -1,
+    val memMoves: Int = 0,
+    val memMatched: Int = 0,
+    val memWon: Boolean = false,
+    val memLock: Boolean = false,
+    val tttBoard: List<String> = listOf("", "", "", "", "", "", "", "", ""),
+    val tttTurn: String = "me",
+    val tttWinner: String = "",
+    val tttMode: String = "hotseat",
+    val tttStarted: Boolean = false,
+    val rpsMeChoice: String = "",
+    val rpsPartnerChoice: String = "",
+    val rpsResult: String = "",
+    val quizIndex: Int = 0,
+    val quizMy: Int = -1,
+    val quizPartner: Int = -1,
+    val quizRevealed: Boolean = false,
+    val quizMatches: Int = 0,
+)
+
+@Serializable
+data class TttShare(val board: List<String>, val turn: String, val mode: String, val winner: String? = null)
+
+@Serializable
+data class RpsShare(val me: String? = null, val partner: String? = null, val result: String? = null)
+
+@Serializable
+data class QuizShare(val index: Int = 0, val my: Int? = null, val partner: Int? = null, val revealed: Boolean = false, val matches: Int = 0)
+
+@Serializable
+data class DuoShare(val tttMe: Int = 0, val tttPartner: Int = 0, val rpsMe: Int = 0, val rpsPartner: Int = 0)
+
+@Serializable
+data class PlayShare(val ttt: TttShare? = null, val rps: RpsShare? = null, val quiz: QuizShare? = null, val duo: DuoShare? = null)
+
+@Serializable
 data class ExtraBundle(
     val notes: List<StickyNote> = emptyList(),
     val habits: List<HabitItem> = emptyList(),
@@ -47,6 +96,7 @@ data class ExtraBundle(
     val kissesReceived: Int = 0,
     val pet: PetState = PetState(),
     val compliments: List<StickyNote> = emptyList(),
+    val play: GamePlay = GamePlay(),
 )
 
 @Singleton
@@ -118,5 +168,172 @@ class ExtraStore @Inject constructor(
     fun addCompliment(text: String) {
         val n = StickyNote(UUID.randomUUID().toString(), text, "rose", LocalDate.now().toString())
         persist(_bundle.value.copy(compliments = listOf(n) + _bundle.value.compliments))
+    }
+
+    private fun play(): GamePlay = _bundle.value.play
+    private fun savePlay(p: GamePlay) = persist(_bundle.value.copy(play = p))
+    private fun bump(p: GamePlay) = p.copy(plays = p.plays + 1)
+
+    fun startMemory() {
+        val emojis = listOf("💗", "🌸", "🍓", "🧸", "🐰", "🎀", "✨", "🧁")
+        val cards = (emojis + emojis).shuffled().map { MemCard(it) }
+        savePlay(play().copy(memCards = cards, memFirst = -1, memMoves = 0, memMatched = 0, memWon = false, memLock = false))
+    }
+
+    fun flipMemory(index: Int) {
+        val g = play()
+        if (g.memWon || g.memLock) return
+        val cards = g.memCards.toMutableList()
+        val card = cards.getOrNull(index) ?: return
+        if (card.flipped || card.matched) return
+        cards[index] = card.copy(flipped = true)
+        if (g.memFirst < 0) {
+            savePlay(g.copy(memCards = cards, memFirst = index))
+            return
+        }
+        val first = cards.getOrNull(g.memFirst) ?: return
+        val moves = g.memMoves + 1
+        if (first.emoji == card.emoji && g.memFirst != index) {
+            cards[g.memFirst] = first.copy(matched = true, flipped = true)
+            cards[index] = cards[index].copy(matched = true, flipped = true)
+            val matched = g.memMatched + 1
+            val won = matched >= 8
+            val best = if (won && (g.memoryMovesBest == 0 || moves < g.memoryMovesBest)) moves else g.memoryMovesBest
+            var next = g.copy(memCards = cards, memFirst = -1, memMoves = moves, memMatched = matched, memWon = won, memLock = false, memoryMovesBest = best)
+            if (won) next = bump(next)
+            savePlay(next)
+            return
+        }
+        savePlay(g.copy(memCards = cards, memMoves = moves, memLock = true))
+    }
+
+    fun memoryUnflip() {
+        val g = play()
+        savePlay(g.copy(memCards = g.memCards.map { if (it.matched) it else it.copy(flipped = false) }, memFirst = -1, memLock = false))
+    }
+
+    fun saveCatchScore(score: Int) {
+        val g = play()
+        val best = maxOf(g.catchBest, score)
+        savePlay(bump(g.copy(catchBest = best)))
+    }
+
+    fun startTtt(mode: String = "hotseat") {
+        savePlay(play().copy(tttBoard = List(9) { "" }, tttTurn = "me", tttWinner = "", tttMode = mode, tttStarted = true))
+    }
+
+    fun playTtt(index: Int) {
+        val g = play()
+        if (!g.tttStarted || g.tttWinner.isNotEmpty()) return
+        if (index !in 0..8 || g.tttBoard[index].isNotEmpty()) return
+        val board = g.tttBoard.toMutableList()
+        board[index] = g.tttTurn
+        var winner = tttWinner(board)
+        var turn = if (winner.isEmpty()) if (g.tttTurn == "me") "partner" else "me" else g.tttTurn
+        if (winner.isEmpty() && g.tttMode == "cpu" && turn == "partner") {
+            val empty = board.indices.filter { board[it].isEmpty() }
+            if (empty.isNotEmpty()) {
+                board[empty.random()] = "partner"
+                winner = tttWinner(board)
+                if (winner.isEmpty()) turn = "me"
+            }
+        }
+        var next = g.copy(tttBoard = board, tttTurn = turn, tttWinner = winner)
+        if (winner == "me") next = next.copy(tttMe = next.tttMe + 1)
+        if (winner == "partner") next = next.copy(tttPartner = next.tttPartner + 1)
+        if (winner.isNotEmpty()) next = bump(next)
+        savePlay(next)
+    }
+
+    fun startRps() {
+        savePlay(play().copy(rpsMeChoice = "", rpsPartnerChoice = "", rpsResult = ""))
+    }
+
+    fun lockRps(who: String, choice: String) {
+        var g = play()
+        if (g.rpsResult.isNotEmpty()) return
+        g = if (who == "partner") g.copy(rpsPartnerChoice = choice) else g.copy(rpsMeChoice = choice)
+        if (g.rpsMeChoice.isNotEmpty() && g.rpsPartnerChoice.isNotEmpty()) {
+            val r = rpsBeats(g.rpsMeChoice, g.rpsPartnerChoice)
+            val result = if (r == 0) "draw" else if (r > 0) "me" else "partner"
+            g = g.copy(rpsResult = result)
+            if (result == "me") g = g.copy(rpsMe = g.rpsMe + 1)
+            if (result == "partner") g = g.copy(rpsPartner = g.rpsPartner + 1)
+            g = bump(g)
+        }
+        savePlay(g)
+    }
+
+    fun startQuiz() {
+        savePlay(play().copy(quizIndex = 0, quizMy = -1, quizPartner = -1, quizRevealed = false, quizMatches = 0))
+    }
+
+    fun answerQuiz(who: String, option: Int) {
+        var g = play()
+        if (g.quizRevealed) return
+        g = if (who == "partner") g.copy(quizPartner = option) else g.copy(quizMy = option)
+        if (g.quizMy >= 0 && g.quizPartner >= 0) {
+            val match = if (g.quizMy == g.quizPartner) g.quizMatches + 1 else g.quizMatches
+            g = g.copy(quizRevealed = true, quizMatches = match)
+        }
+        savePlay(g)
+    }
+
+    fun nextQuiz() {
+        val g = play()
+        savePlay(bump(g.copy(quizIndex = (g.quizIndex + 1) % 6, quizMy = -1, quizPartner = -1, quizRevealed = false)))
+    }
+
+    fun bumpTruth() = savePlay(bump(play()))
+
+    fun exportPlayCode(): String {
+        val g = play()
+        val share = PlayShare(
+            ttt = if (g.tttStarted) TttShare(g.tttBoard, g.tttTurn, g.tttMode, g.tttWinner.ifBlank { null }) else null,
+            rps = RpsShare(g.rpsMeChoice.ifBlank { null }, g.rpsPartnerChoice.ifBlank { null }, g.rpsResult.ifBlank { null }),
+            quiz = QuizShare(g.quizIndex, g.quizMy.takeIf { it >= 0 }, g.quizPartner.takeIf { it >= 0 }, g.quizRevealed, g.quizMatches),
+            duo = DuoShare(g.tttMe, g.tttPartner, g.rpsMe, g.rpsPartner),
+        )
+        val raw = json.encodeToString(share)
+        return Base64.encodeToString(raw.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+    }
+
+    fun importPlayCode(code: String): Boolean {
+        return try {
+            val trimmed = code.trim()
+            if (trimmed.isEmpty()) return false
+            val raw = String(Base64.decode(trimmed, Base64.DEFAULT), Charsets.UTF_8)
+            val share = json.decodeFromString<PlayShare>(raw)
+            var p = play()
+            share.ttt?.let { p = p.copy(tttBoard = it.board, tttTurn = it.turn, tttMode = it.mode, tttWinner = it.winner ?: "", tttStarted = true) }
+            share.rps?.let { p = p.copy(rpsMeChoice = it.me.orEmpty(), rpsPartnerChoice = it.partner.orEmpty(), rpsResult = it.result.orEmpty()) }
+            share.quiz?.let { p = p.copy(quizIndex = it.index, quizMy = it.my ?: -1, quizPartner = it.partner ?: -1, quizRevealed = it.revealed, quizMatches = it.matches) }
+            share.duo?.let { p = p.copy(tttMe = it.tttMe, tttPartner = it.tttPartner, rpsMe = it.rpsMe, rpsPartner = it.rpsPartner) }
+            savePlay(p)
+            true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    companion object {
+        fun tttWinner(board: List<String>): String {
+            val lines = arrayOf(
+                intArrayOf(0, 1, 2), intArrayOf(3, 4, 5), intArrayOf(6, 7, 8),
+                intArrayOf(0, 3, 6), intArrayOf(1, 4, 7), intArrayOf(2, 5, 8),
+                intArrayOf(0, 4, 8), intArrayOf(2, 4, 6),
+            )
+            for (l in lines) {
+                val a = board.getOrElse(l[0]) { "" }
+                if (a.isNotEmpty() && a == board.getOrElse(l[1]) { "" } && a == board.getOrElse(l[2]) { "" }) return a
+            }
+            return if (board.all { it.isNotEmpty() }) "draw" else ""
+        }
+
+        fun rpsBeats(a: String, b: String): Int {
+            if (a == b) return 0
+            if ((a == "flower" && b == "teddy") || (a == "teddy" && b == "bow") || (a == "bow" && b == "flower")) return 1
+            return -1
+        }
     }
 }

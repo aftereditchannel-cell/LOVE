@@ -510,3 +510,64 @@ textarea { min-height: 90px; resize: vertical; }
   width: 12px; height: 12px; border-radius: 50%; background: var(--accent);
   position: relative; right: -21px; top: 6px;
 }
+
+.game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+.game-tile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  padding: 14px; border-radius: 20px; text-align: right;
+  background: var(--surface); border: 1px solid rgba(255,255,255,.14);
+  color: var(--text); font-family: inherit; cursor: pointer;
+  backdrop-filter: blur(var(--glass));
+}
+.game-tile .e { font-size: 28px; }
+.game-tile b { font-size: 0.92rem; }
+.game-tile:active { transform: scale(0.98); }
+
+.mem-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.mem-card {
+  aspect-ratio: 1; border-radius: 16px; border: 1px solid rgba(255,255,255,.14);
+  background: var(--surface); color: var(--accent); font-size: 26px;
+  font-family: inherit; cursor: pointer;
+}
+.mem-card.open { background: var(--accent-soft); }
+.mem-card.ok { box-shadow: 0 0 0 2px var(--accent); }
+
+.ttt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 320px; margin: 0 auto; }
+.ttt-cell {
+  aspect-ratio: 1; border-radius: 20px; font-size: 36px;
+  background: var(--surface); border: 1px solid rgba(255,255,255,.14);
+  color: var(--text); font-family: inherit; cursor: pointer;
+}
+.ttt-cell:active { transform: scale(0.96); }
+
+.rps-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.rps-btn {
+  border-radius: 18px; padding: 12px 6px; background: var(--surface);
+  border: 1px solid rgba(255,255,255,.12); color: var(--text);
+  font-family: inherit; cursor: pointer; display: flex; flex-direction: column; gap: 4px; align-items: center;
+  font-size: 28px;
+}
+.rps-btn span { font-size: 0.75rem; }
+.rps-btn.on { border-color: var(--accent); background: var(--accent-soft); }
+
+.catch-arena {
+  position: relative; height: 260px; border-radius: 24px;
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 28%, transparent), var(--surface));
+  border: 1px solid rgba(255,255,255,.12); overflow: hidden;
+}
+.catch-heart {
+  position: absolute; width: 64px; height: 64px; border: 0; background: none;
+  font-size: 42px; cursor: pointer; transform: translate(-50%, -50%);
+  animation: beat 1s ease-in-out infinite;
+}
+
+.person-btn.on { border-color: var(--accent); background: var(--accent-soft); }
+
+.burst {
+  position: fixed; z-index: 60; pointer-events: none; font-size: 22px;
+  animation: burst 900ms ease-out forwards;
+}
+@keyframes burst {
+  0% { transform: translate(0,0) scale(.4); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.2); opacity: 0; }
+}
