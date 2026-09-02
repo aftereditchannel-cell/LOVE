@@ -41,7 +41,7 @@ fun CountdownScreen(vm: CountdownViewModel = hiltViewModel()){
                                     Text(if(daysLeft>=0) "$daysLeft روز مونده" else "${-daysLeft} روز گذشته", style=MaterialTheme.typography.bodySmall, color=Primary)
                                 }
                             }
-                            TextButton(onClick={ vm.delete(c.id)}){ Text("حذف", color=Danger, fontSize=12.sp)}
+                            if(vm.isReadOnly(c.id)) Text("از توکن پارتنر 👁️", style=MaterialTheme.typography.labelSmall, color=TextTertiary) else TextButton(onClick={ vm.delete(c.id)}){ Text("حذف", color=Danger, fontSize=12.sp)}
                         }
                     }
                 }

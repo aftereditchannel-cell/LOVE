@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.coupleos.app.data.local.ExtraStore
+import com.coupleos.app.ui.components.TokenStatusBar
 import com.coupleos.app.ui.theme.*
 import kotlinx.coroutines.delay
 
@@ -49,6 +50,8 @@ private val rathers = listOf(
 @Composable
 fun GameArcadeScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
+    val partner by vm.extra.partnerBundle.collectAsState()
+    val status by vm.extra.syncStatus.collectAsState()
     var tab by remember { mutableStateOf(Arcade.Hub) }
     val title = when (tab) {
         Arcade.Hub -> "اتاق بازی 🎮"
@@ -72,7 +75,7 @@ fun GameArcadeScreen(vm: ExtraViewModel = hiltViewModel()) {
         },
     ) { pad ->
         when (tab) {
-            Arcade.Hub -> HubPane(bundle.play, vm.extra, { tab = it }, Modifier.padding(pad))
+            Arcade.Hub -> HubPane(bundle.play, partner.play, status, vm.extra, { tab = it }, Modifier.padding(pad))
             Arcade.Memory -> MemoryPane(vm.extra, Modifier.padding(pad))
             Arcade.Catch -> CatchPane(vm.extra, Modifier.padding(pad))
             Arcade.Ttt -> TttPane(vm.extra, Modifier.padding(pad))
@@ -84,15 +87,24 @@ fun GameArcadeScreen(vm: ExtraViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun HubPane(play: com.coupleos.app.data.local.GamePlay, extra: ExtraStore, go: (Arcade) -> Unit, modifier: Modifier) {
+private fun HubPane(
+    play: com.coupleos.app.data.local.GamePlay,
+    partnerPlay: com.coupleos.app.data.local.GamePlay,
+    status: String?,
+    extra: ExtraStore,
+    go: (Arcade) -> Unit,
+    modifier: Modifier,
+) {
     var code by remember { mutableStateOf("") }
     var toast by remember { mutableStateOf("") }
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        TokenStatusBar(status)
         Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("امتیاز دونفره", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
                 Text("💗 ${play.tttMe} — ${play.tttPartner} 🌸", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
                 Text("گل‌تدی ${play.rpsMe}:${play.rpsPartner} · رکورد قلب ${play.catchBest}", color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                Text("رکورد پارتنر از توکن خودش 👁️ قلب ${partnerPlay.catchBest} · دوز ${partnerPlay.tttMe} · ${partnerPlay.plays} دور", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
             }
         }
         Text("یه‌نفره — برای دل خودت", color = TextTertiary, style = MaterialTheme.typography.labelSmall)

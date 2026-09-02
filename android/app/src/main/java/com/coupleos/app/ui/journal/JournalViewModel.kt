@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.JournalDao
 import com.coupleos.app.data.local.entity.JournalEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -94,16 +95,20 @@ class JournalViewModel @Inject constructor(
                 isSynced = false
             )
             journalDao.insert(entry)
-            syncToGist()
-            _uiState.update { it.copy(feedbackMessage = "یادداشت ثبت و روی توکن ذخیره شد ✅") }
+            val r = syncToGist()
+            _uiState.update { it.copy(feedbackMessage = if (r.isSuccess) TokenOwnership.saved("یادداشت") else TokenOwnership.failed(r.exceptionOrNull())) }
         }
     }
 
+    fun isReadOnly(id: String) = gitHubRepository.isReadOnly(GitHubRepository.JOURNAL_FILE, id)
+
     fun deleteEntry(id: String) {
         viewModelScope.launch {
+            if (isReadOnly(id)) { _uiState.update { it.copy(feedbackMessage = TokenOwnership.READ_ONLY) }; return@launch }
             journalDao.softDelete(id, LocalDateTime.now().toString())
-            gitHubRepository.removeFromList(GitHubRepository.JOURNAL_FILE, id)
+            val r = gitHubRepository.removeFromList(GitHubRepository.JOURNAL_FILE, id)
             syncToGist()
+            _uiState.update { it.copy(feedbackMessage = if (r.isSuccess) "حذف شد و از توکن خودت پاک شد ✅" else TokenOwnership.failed(r.exceptionOrNull())) }
         }
     }
 
@@ -112,14 +117,14 @@ class JournalViewModel @Inject constructor(
             _uiState.update { it.copy(isRefreshing = true) }
             pullFromGist()
             syncToGist()
-            _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "همگام سازی شد ✅") }
+            _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "بازخوانی شد ✅ — دیتای پارتنر از توکن خودش خونده شد 👁️") }
             kotlinx.coroutines.delay(2000)
             _uiState.update { it.copy(feedbackMessage = null) }
         }
     }
 
-    private suspend fun syncToGist() {
-        try {
+    private suspend fun syncToGist(): Result<Unit> {
+        return try {
             val remoteStr = gitHubRepository.readMergedContent(GitHubRepository.JOURNAL_FILE).getOrNull() ?: "[]"
             val remoteList = try { json.decodeFromString<List<JournalSyncData>>(remoteStr) } catch (_: Exception) { emptyList() }
             val localList = entries.value.map {
@@ -130,7 +135,7 @@ class JournalViewModel @Inject constructor(
             localList.forEach { merged[it.id] = it }
             val finalJson = json.encodeToString(merged.values.toList())
             gitHubRepository.saveFullList(GitHubRepository.JOURNAL_FILE, finalJson)
-        } catch (_: Exception) {}
+        } catch (e: Exception) { Result.failure(e) }
     }
 
     fun clearFeedback() { _uiState.update { it.copy(feedbackMessage = null) } }

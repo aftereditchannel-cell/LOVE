@@ -32,14 +32,14 @@ fun BucketScreen(vm: BucketViewModel = hiltViewModel()){
                 items(items, key={it.id}){ b->
                     Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=if(b.isCompleted) PrimaryContainer else Surface), shape=RoundedCornerShape(16.dp)){
                         Row(Modifier.padding(16.dp), verticalAlignment=Alignment.CenterVertically){
-                            Checkbox(checked=b.isCompleted, onCheckedChange={ vm.toggle(b.id)})
+                            Checkbox(checked=b.isCompleted, enabled=!vm.isReadOnly(b.id), onCheckedChange={ vm.toggle(b.id)})
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)){
                                 Text(b.title, style=MaterialTheme.typography.titleSmall, color=TextPrimary)
                                 if(b.description.isNotEmpty()) Text(b.description, style=MaterialTheme.typography.bodySmall, color=TextSecondary)
                                 if(b.isCompleted && b.completedDate.isNotEmpty()) Text("✓ انجام شده: ${b.completedDate}", style=MaterialTheme.typography.labelSmall, color=Success)
                             }
-                            TextButton(onClick={ vm.delete(b.id)}){ Text("حذف", color=Danger, fontSize=12.sp)}
+                            if(vm.isReadOnly(b.id)) Text("از توکن پارتنر 👁️", style=MaterialTheme.typography.labelSmall, color=TextTertiary) else TextButton(onClick={ vm.delete(b.id)}){ Text("حذف", color=Danger, fontSize=12.sp)}
                         }
                     }
                 }

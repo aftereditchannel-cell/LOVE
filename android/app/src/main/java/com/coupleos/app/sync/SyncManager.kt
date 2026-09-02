@@ -22,12 +22,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Global sync engine.
+ * Global read engine.
  *
- * Pulls ALL data from both tokens' gists into the local Room database, and pushes
- * any local-only (unsynced) data back to the gists. Called on app launch and on
- * manual refresh so the partner's data appears automatically without visiting
- * every screen.
+ * Pulls ALL data into the local Room database:
+ *  - from MY token's gist  → my own data (writable)
+ *  - from the PARTNER token's gist → their data (read-only mirror)
+ *
+ * It never writes anything: registering data is always done by the individual
+ * ViewModels onto MY token only. Called on app launch and manual refresh so the
+ * partner's data shows up without visiting every screen.
  */
 @Singleton
 class SyncManager @Inject constructor(
@@ -108,7 +111,7 @@ class SyncManager @Inject constructor(
             for (i in list) {
                 if (messageDao.getMessageById(i.id) == null) {
                     messageDao.insert(MessageEntity(
-                        id = i.id, coupleId = i.coupleId, senderId = i.senderId, content = i.content,
+                        id = i.id, coupleId = storage.getCoupleId() ?: i.coupleId, senderId = i.senderId, content = i.content,
                         type = i.type, createdAt = i.createdAt, updatedAt = i.createdAt, isSynced = true
                     ))
                     applied++

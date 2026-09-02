@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.CountdownDao
 import com.coupleos.app.data.local.entity.CountdownEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,20 +45,27 @@ class CountdownViewModel @Inject constructor(
         viewModelScope.launch{
             val now=LocalDateTime.now().toString()
             dao.insert(CountdownEntity(id=crypto.generateId(), title=title, targetDate=date, emoji=emoji, createdBy=storage.getUserId()?:"", createdAt=now))
-            sync()
-            _ui.update{ it.copy(feedback="شمارش اضافه و روی توکن ذخیره شد ⏱️")}
+            val r = sync()
+            _ui.update{ it.copy(feedback = if(r.isSuccess) TokenOwnership.saved("شمارش معکوس") else TokenOwnership.failed(r.exceptionOrNull()))}
         }
     }
-    fun delete(id:String){ viewModelScope.launch{ dao.delete(id); repo.removeFromList(GitHubRepository.COUNTDOWNS_FILE, id); sync() }}
-    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
-    private suspend fun sync(){
-        try{
+    fun isReadOnly(id:String) = repo.isReadOnly(GitHubRepository.COUNTDOWNS_FILE, id)
+    fun delete(id:String){ viewModelScope.launch{
+        if(isReadOnly(id)){ _ui.update{ it.copy(feedback=TokenOwnership.READ_ONLY)}; return@launch }
+        dao.delete(id)
+        val r = repo.removeFromList(GitHubRepository.COUNTDOWNS_FILE, id)
+        sync()
+        _ui.update{ it.copy(feedback = if(r.isSuccess) "حذف شد و از توکن خودت پاک شد ✅" else TokenOwnership.failed(r.exceptionOrNull()))}
+    }}
+    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="بازخوانی شد ✅ — دیتای پارتنر از توکن خودش خونده شد 👁️")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
+    private suspend fun sync(): Result<Unit> {
+        return try{
             val remoteStr=repo.readMergedContent(GitHubRepository.COUNTDOWNS_FILE).getOrNull()?:"[]"
             val remote=try{ json.decodeFromString<List<CountdownSyncData>>(remoteStr)}catch(_:Exception){ emptyList()}
             val local=items.value.map{ CountdownSyncData(it.id,it.title,it.targetDate,it.emoji,it.createdBy,it.createdAt)}
             val merged=mutableMapOf<String, CountdownSyncData>(); remote.forEach{ merged[it.id]=it}; local.forEach{ merged[it.id]=it}
             repo.saveFullList(GitHubRepository.COUNTDOWNS_FILE, json.encodeToString(merged.values.toList()))
-        }catch(_:Exception){}
+        }catch(e:Exception){ Result.failure(e) }
     }
     fun clear(){ _ui.update{ it.copy(feedback=null)}}
 }

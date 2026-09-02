@@ -6,6 +6,7 @@ import com.coupleos.app.data.local.dao.DailyQuestionDao
 import com.coupleos.app.data.local.entity.DailyQuestionEntity
 import com.coupleos.app.data.local.entity.QuestionAnswerEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -58,7 +59,7 @@ class QuestionsViewModel @Inject constructor(
                 if(remote!=null && remote!="[]"){
                     val list=try{ json.decodeFromString<List<AnswerSyncData>>(remote)}catch(_:Exception){ emptyList()}
                     // show answers for display
-                    _ui.update{ it.copy(answers=list.map{ "${it.answer} — ${if(it.userId==storage.getUserId()) "تو" else "پارتنر"}" })}
+                    _ui.update{ it.copy(answers=list.map{ "${it.answer} — ${if(it.userId==storage.getUserId()) "تو" else "پارتنر (فقط خواندنی)"}" })}
                 }
             }catch(_:Exception){}
         }
@@ -75,10 +76,13 @@ class QuestionsViewModel @Inject constructor(
                 val remote=try{ json.decodeFromString<List<AnswerSyncData>>(remoteStr)}catch(_:Exception){ emptyList()}
                 val newItem=AnswerSyncData(ans.id, qId, ans.userId, text, ans.createdAt)
                 val merged = remote.toMutableList().apply{ add(newItem)}
-                repo.saveFullList(GitHubRepository.QUESTIONS_FILE, json.encodeToString(merged))
-                _ui.update{ it.copy(feedback="پاسخ ثبت و روی توکن ذخیره شد ✓", answers=merged.map{ "${it.answer} — ${if(it.userId==storage.getUserId()) "تو" else "پارتنر"}" })}
-            }catch(_:Exception){
-                _ui.update{ it.copy(feedback="پاسخ ثبت شد (لوکال)")}
+                val r = repo.saveFullList(GitHubRepository.QUESTIONS_FILE, json.encodeToString(merged))
+                _ui.update{ it.copy(
+                    feedback = if(r.isSuccess) TokenOwnership.saved("پاسخ") else TokenOwnership.failed(r.exceptionOrNull()),
+                    answers = merged.map{ "${it.answer} — ${if(it.userId==storage.getUserId()) "تو" else "پارتنر (فقط خواندنی)"}" }
+                )}
+            }catch(e:Exception){
+                _ui.update{ it.copy(feedback=TokenOwnership.failed(e))}
             }
         }
     }

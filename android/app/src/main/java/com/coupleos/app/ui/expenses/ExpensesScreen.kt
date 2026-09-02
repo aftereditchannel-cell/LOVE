@@ -36,7 +36,7 @@ fun ExpensesScreen(vm: ExpenseViewModel = hiltViewModel()){
                                 Text(e.category.ifEmpty{ "سایر"} + " — ${e.amount.toInt()} تومان", style=MaterialTheme.typography.titleSmall, color=TextPrimary)
                                 Text(e.date + if(e.note.isNotEmpty()) " • ${e.note}" else "", style=MaterialTheme.typography.labelSmall, color=TextTertiary)
                             }
-                            TextButton(onClick={ vm.delete(e.id)}){ Text("حذف", color=Danger, fontSize=12.sp)}
+                            if(vm.isReadOnly(e.id)) Text("از توکن پارتنر 👁️", style=MaterialTheme.typography.labelSmall, color=TextTertiary) else TextButton(onClick={ vm.delete(e.id)}){ Text("حذف", color=Danger, fontSize=12.sp)}
                         }
                     }
                 }

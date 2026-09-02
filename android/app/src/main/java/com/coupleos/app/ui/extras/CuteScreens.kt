@@ -11,6 +11,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.coupleos.app.ui.components.PartnerReadOnlyHeader
+import com.coupleos.app.ui.components.TokenStatusBar
 import com.coupleos.app.ui.theme.*
 
 private val fortunes = listOf(
@@ -33,10 +35,14 @@ private val pets = listOf("🐰" to "bunny", "🐱" to "kitten", "🐥" to "chic
 @Composable
 fun KissesScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
+    val partner by vm.extra.partnerBundle.collectAsState()
+    val status by vm.extra.syncStatus.collectAsState()
     Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("بوس‌شمار 💋", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }) { pad ->
         Column(Modifier.padding(pad).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            TokenStatusBar(status)
             Text("💋", fontSize = 64.sp)
             Text("فرستادی ${bundle.kissesSent} · گرفتی ${bundle.kissesReceived}", color = TextSecondary)
+            Text("پارتنرت فرستاده ${partner.kissesSent} 👁️ (از توکن پارتنر، فقط خواندنی)", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
             Button(onClick = { vm.extra.sendKiss() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Primary)) { Text("یک بوس بفرست 💋") }
             Button(onClick = { vm.extra.receiveKiss() }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer, contentColor = Primary)) { Text("شبیه‌سازی بوس برگشتی") }
         }
@@ -47,10 +53,12 @@ fun KissesScreen(vm: ExtraViewModel = hiltViewModel()) {
 @Composable
 fun PetScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
+    val status by vm.extra.syncStatus.collectAsState()
     val p = bundle.pet
     val emoji = pets.firstOrNull { it.second == p.type }?.first ?: "🐰"
     Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("حیوون دونفره ${p.name}", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }) { pad ->
         Column(Modifier.padding(pad).padding(20.dp).verticalScroll(rememberScrollState()), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            TokenStatusBar(status)
             Text(emoji, fontSize = 84.sp)
             Text(p.name, color = TextPrimary, style = MaterialTheme.typography.titleLarge)
             Text("گرسنگی ${p.hunger}", color = TextTertiary)
@@ -74,11 +82,15 @@ fun JarScreen(vm: ExtraViewModel = hiltViewModel()) {
     var drawn by remember { mutableStateOf<String?>(null) }
     var show by remember { mutableStateOf(false) }
     val bundle by vm.extra.bundle.collectAsState()
+    val partner by vm.extra.partnerBundle.collectAsState()
+    val status by vm.extra.syncStatus.collectAsState()
     Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("شیشه تعریف 🫙", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }, floatingActionButton = { FloatingActionButton(onClick = { show = true }, containerColor = Primary) { Text("+", color = OnPrimary) } }) { pad ->
         Column(Modifier.padding(pad).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            TokenStatusBar(status)
             Text("🫙", fontSize = 72.sp)
             Button(onClick = {
-                val pool = compliments + bundle.compliments.map { it.text }
+                // my own compliments + the partner's (read-only) ones
+                val pool = compliments + bundle.compliments.map { it.text } + partner.compliments.map { it.text }
                 drawn = pool.random()
             }, colors = ButtonDefaults.buttonColors(containerColor = Primary), modifier = Modifier.fillMaxWidth()) { Text("تکون بده") }
             if (drawn != null) Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {

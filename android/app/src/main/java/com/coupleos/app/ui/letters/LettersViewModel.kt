@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.LoveLetterDao
 import com.coupleos.app.data.local.entity.LoveLetterEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -51,25 +52,28 @@ class LettersViewModel @Inject constructor(
             val now=LocalDateTime.now().toString()
             val recipient = storage.getPartnerName() // we store by userId, but for now use partner userId if available else couple
             dao.insert(LoveLetterEntity(id=crypto.generateId(), title=title, content=content, openOnDate=openOnDate, createdBy=userId, recipientId=recipient, createdAt=now))
-            sync()
-            _ui.update{ it.copy(feedback="نامه عاشقانه ثبت و روی توکن ذخیره شد 💌")}
+            val r = sync()
+            _ui.update{ it.copy(feedback = if(r.isSuccess) TokenOwnership.saved("نامه عاشقانه") else TokenOwnership.failed(r.exceptionOrNull()))}
         }
     }
+    fun isReadOnly(id:String) = repo.isReadOnly(GitHubRepository.LETTERS_FILE, id)
     fun openLetter(id:String){
         viewModelScope.launch{
             val letter = sent.value.find{ it.id==id} ?: received.value.find{ it.id==id} ?: return@launch
+            // Opening a letter that belongs to the partner token stays local only:
+            // their gist is read-only for us.
             dao.update(letter.copy(isOpened=true))
-            sync()
+            if(!isReadOnly(id)) sync()
         }
     }
-    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
-    private suspend fun sync(){
-        try{
+    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="بازخوانی شد ✅ — دیتای پارتنر از توکن خودش خونده شد 👁️")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
+    private suspend fun sync(): Result<Unit> {
+        return try{
             val remoteStr=repo.readMergedContent(GitHubRepository.LETTERS_FILE).getOrNull()?:"[]"
             val remote=try{ json.decodeFromString<List<LetterSyncData>>(remoteStr)}catch(_:Exception){ emptyList()}
             val local=(sent.value + received.value).map{ LetterSyncData(it.id,it.title,it.content,it.openOnDate,it.isOpened,it.createdBy,it.recipientId,it.createdAt)}
             val merged=mutableMapOf<String, LetterSyncData>(); remote.forEach{ merged[it.id]=it}; local.forEach{ merged[it.id]=it}
             repo.saveFullList(GitHubRepository.LETTERS_FILE, json.encodeToString(merged.values.toList()))
-        }catch(_:Exception){}
+        }catch(e:Exception){ Result.failure(e) }
     }
 }

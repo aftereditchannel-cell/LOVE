@@ -26,6 +26,8 @@ import androidx.lifecycle.ViewModel
 import coil.compose.AsyncImage
 import com.coupleos.app.data.local.ExtraStore
 import com.coupleos.app.data.local.dao.MemoryDao
+import com.coupleos.app.ui.components.PartnerReadOnlyHeader
+import com.coupleos.app.ui.components.TokenStatusBar
 import com.coupleos.app.ui.theme.*
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -49,10 +51,13 @@ private val dateIdeas = listOf(
 @Composable
 fun DatePlannerScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
+    val partner by vm.extra.partnerBundle.collectAsState()
+    val status by vm.extra.syncStatus.collectAsState()
     var show by remember { mutableStateOf(false) }
     val idea = remember { dateIdeas.random() }
     Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("برنامه قرار 🍝", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }, floatingActionButton = { FloatingActionButton(onClick = { show = true }, containerColor = Primary) { Icon(Icons.Default.Add, null, tint = OnPrimary) } }) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            TokenStatusBar(status)
             Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("ایده امروز", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
@@ -68,6 +73,18 @@ fun DatePlannerScreen(vm: ExtraViewModel = hiltViewModel()) {
                         Text("${d.emoji} ${d.title}", color = TextPrimary)
                         Text(d.desc, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
                         TextButton(onClick = { vm.extra.removeDate(d.id) }) { Text("حذف", color = Danger) }
+                    }
+                }
+            }
+            if (partner.dates.isNotEmpty()) {
+                PartnerReadOnlyHeader()
+                partner.dates.forEach { d ->
+                    Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("${d.emoji} ${d.title}", color = TextPrimary)
+                            Text(d.desc, color = TextSecondary, style = MaterialTheme.typography.bodySmall)
+                            Text("فقط خواندنی 👁️", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
             }
@@ -89,17 +106,31 @@ fun DatePlannerScreen(vm: ExtraViewModel = hiltViewModel()) {
 @Composable
 fun LoveNotesScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
+    val partner by vm.extra.partnerBundle.collectAsState()
+    val status by vm.extra.syncStatus.collectAsState()
     var show by remember { mutableStateOf(false) }
     val colors = listOf("rose", "lemon", "mint", "sky")
     Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("یخچال عشق 🧊", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }, floatingActionButton = { FloatingActionButton(onClick = { show = true }, containerColor = Primary) { Icon(Icons.Default.Add, null, tint = OnPrimary) } }) { pad ->
-        if (bundle.notes.isEmpty()) Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) { Text("یخچال خالیه — یک نوت کیوت بچسبون", color = TextTertiary) }
-        else LazyColumn(Modifier.padding(pad).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyColumn(Modifier.padding(pad).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { TokenStatusBar(status) }
+            if (bundle.notes.isEmpty()) item { Text("یخچال خالیه — یک نوت کیوت بچسبون", color = TextTertiary) }
             items(bundle.notes, key = { it.id }) { n ->
                 val bg = when (n.color) { "lemon" -> 0xFFFFF1B8L; "mint" -> 0xFFC9F3DEL; "sky" -> 0xFFCDE8FFL; else -> 0xFFFFD6E0L }
                 Card(colors = CardDefaults.cardColors(containerColor = androidx.compose.ui.graphics.Color(bg)), shape = RoundedCornerShape(16.dp)) {
                     Column(Modifier.padding(16.dp)) {
                         Text(n.text, color = androidx.compose.ui.graphics.Color(0xFF5A2433L))
                         TextButton(onClick = { vm.extra.removeNote(n.id) }) { Text("حذف") }
+                    }
+                }
+            }
+            if (partner.notes.isNotEmpty()) {
+                item { PartnerReadOnlyHeader() }
+                items(partner.notes, key = { "p-" + it.id }) { n ->
+                    Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(16.dp)) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text(n.text, color = TextPrimary)
+                            Text("فقط خواندنی 👁️", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
             }
@@ -115,15 +146,29 @@ fun LoveNotesScreen(vm: ExtraViewModel = hiltViewModel()) {
 @Composable
 fun HabitsScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
+    val partner by vm.extra.partnerBundle.collectAsState()
+    val status by vm.extra.syncStatus.collectAsState()
     var show by remember { mutableStateOf(false) }
     Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("عادت‌های دونفره 🔥", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }, floatingActionButton = { FloatingActionButton(onClick = { show = true }, containerColor = Primary) { Icon(Icons.Default.Add, null, tint = OnPrimary) } }) { pad ->
         LazyColumn(Modifier.padding(pad).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { TokenStatusBar(status) }
             if (bundle.habits.isEmpty()) item { Text("عادتی نیست", color = TextTertiary) }
             items(bundle.habits, key = { it.id }) { h ->
                 Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(16.dp)) {
                     Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Column { Text("${h.emoji} ${h.title}", color = TextPrimary); Text("استریک ${h.streak} روز", color = TextTertiary, style = MaterialTheme.typography.labelSmall) }
                         Checkbox(checked = h.last == java.time.LocalDate.now().toString(), onCheckedChange = { vm.extra.tickHabit(h.id) })
+                    }
+                }
+            }
+            if (partner.habits.isNotEmpty()) {
+                item { PartnerReadOnlyHeader() }
+                items(partner.habits, key = { "p-" + it.id }) { h ->
+                    Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(16.dp)) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("${h.emoji} ${h.title}", color = TextPrimary)
+                            Text("استریک ${h.streak} روز — فقط خواندنی 👁️", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
             }
@@ -139,15 +184,29 @@ fun HabitsScreen(vm: ExtraViewModel = hiltViewModel()) {
 @Composable
 fun MusicScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
+    val partner by vm.extra.partnerBundle.collectAsState()
+    val status by vm.extra.syncStatus.collectAsState()
     var show by remember { mutableStateOf(false) }
     Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("آهنگ ما 🎵", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }, floatingActionButton = { FloatingActionButton(onClick = { show = true }, containerColor = Primary) { Icon(Icons.Default.Add, null, tint = OnPrimary) } }) { pad ->
         LazyColumn(Modifier.padding(pad).padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            item { TokenStatusBar(status) }
             if (bundle.songs.isEmpty()) item { Text("پلی‌لیست خالیه", color = TextTertiary) }
             items(bundle.songs, key = { it.id }) { s ->
                 Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(16.dp)) {
                     Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column { Text("🎵 ${s.title}", color = TextPrimary); Text(s.artist, color = TextTertiary, style = MaterialTheme.typography.labelSmall) }
                         TextButton(onClick = { vm.extra.removeSong(s.id) }) { Text("حذف", color = Danger) }
+                    }
+                }
+            }
+            if (partner.songs.isNotEmpty()) {
+                item { PartnerReadOnlyHeader() }
+                items(partner.songs, key = { "p-" + it.id }) { s ->
+                    Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(16.dp)) {
+                        Column(Modifier.padding(16.dp)) {
+                            Text("🎵 ${s.title}", color = TextPrimary)
+                            Text("${s.artist} — فقط خواندنی 👁️", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
+                        }
                     }
                 }
             }
@@ -169,11 +228,13 @@ fun GamesScreen(vm: ExtraViewModel = hiltViewModel()) {
 @Composable
 fun PhotosGalleryScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
+    val partner by vm.extra.partnerBundle.collectAsState()
+    val status by vm.extra.syncStatus.collectAsState()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) vm.extra.addPhoto(uri.toString(), "عکس")
     }
     Scaffold(containerColor = Background, topBar = { TopAppBar(title = { Text("عکس‌های ما 📸", color = TextPrimary) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Surface)) }, floatingActionButton = { FloatingActionButton(onClick = { picker.launch("image/*") }, containerColor = Primary) { Icon(Icons.Default.Add, null, tint = OnPrimary) } }) { pad ->
-        val photos = bundle.photos
+        val photos = bundle.photos + partner.photos
         if (photos.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -182,15 +243,18 @@ fun PhotosGalleryScreen(vm: ExtraViewModel = hiltViewModel()) {
                 }
             }
         } else {
+            Column(Modifier.fillMaxSize().padding(pad)) {
+            TokenStatusBar(status)
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                modifier = Modifier.fillMaxSize().padding(pad).padding(16.dp),
+                modifier = Modifier.fillMaxSize().padding(16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 items(photos, key = { it.id }) { p ->
                     AsyncImage(model = p.src, contentDescription = p.title, modifier = Modifier.aspectRatio(1f), contentScale = ContentScale.Crop)
                 }
+            }
             }
         }
     }

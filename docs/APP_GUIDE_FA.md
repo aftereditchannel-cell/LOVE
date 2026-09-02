@@ -1,6 +1,6 @@
 # ❤️ دنیای کوچیک ما — راهنمای کامل اپلیکیشن (فارسی)
 
-> **تمام قابلیت‌ها فعال شد — دیتا واقعاً روی توکن ذخیره و دریافت می‌شود**
+> **مدل توکن: ثبت فقط روی توکن خودت ✍️ — بازخوانی از توکن پارتنر 👁️**
 
 ---
 
@@ -61,26 +61,42 @@
 | **Partner PAT** (`ghp_...` پارتنر) | همان | خواندن/نوشتن `partnerGistId` |
 | **Session JWT** (ساخت بک‌اند) | همان | هدر `Authorization: Bearer` برای API سرور |
 
-### Gist دوگانه (Dual-Gist) — فیکس اصلی
+### مدل مالکیت توکن — «ثبت روی توکن خودم، بازخوانی از توکن پارتنر»
 
-**مشکل قبل:** فقط یک `gistId` ذخیره می‌شد، و `saveToGist` فقط روی یک Gist می‌نوشت، و `readFromPartnerGist` تلاش می‌کرد با توکن پارتنر Gist تو را بخواند (ناممکن — Gist خصوصی فقط برای مالکش قابل دیدن است). نتیجه: «اتصال تایید می‌شد ولی دیتا ثبت نمی‌شد».
+قانون اصلی اپ:
 
-**راه‌حل فعلی (`GitHubRepository.kt` جدید):**
+| عملیات | توکن خودم (Personal PAT) | توکن پارتنر (Partner PAT) |
+|--------|--------------------------|----------------------------|
+| ثبت / افزودن | ✍️ بله — تنها مقصد نوشتن | ❌ هرگز |
+| ویرایش | ✍️ فقط روی دیتای خودم | ❌ هرگز |
+| حذف | ✍️ فقط دیتای خودم | ❌ هرگز |
+| خواندن | ✅ بله | 👁️ بله — فقط خواندن |
+
+یعنی امیر توکن خودش را می‌زند و توکن ستایش را هم وارد می‌کند؛ هر چیزی که امیر ثبت می‌کند
+**فقط** روی Gist توکن امیر نوشته می‌شود، و دیتای ستایش از Gist توکن ستایش **فقط خوانده** می‌شود.
+سمت ستایش هم دقیقاً برعکس. هیچ‌کس روی توکن پارتنرش چیزی نمی‌نویسد.
+
+**پیاده‌سازی (`GitHubRepository.kt`):**
 
 ```kotlin
-ensureBothGists(): Pair<myGistId, partnerGistId>
-// هر توکن اگر Gist با Description = "CoupleOS-SharedData" نداشته باشد، یکی می‌سازد و همه 14 فایل را با "[]" مقداردهی می‌کند
+ensureMyGist(): Result<Pair<myToken, myGistId>>
+// فقط Gist خودم ساخته/پیدا می‌شود — Gist پارتنر هرگز ساخته نمی‌شود
 
 saveToGist(fileName, content): Result<Unit>
-  → write to myGistId with myToken  (اگر موفق)
-  → write to partnerGistId with partnerToken (backup)
-  → success if at least one succeeds
+  → PATCH فقط روی myGistId با myToken
+  → در خطا: پیام فارسی با کد HTTP (401/403/404/…) و «تلاش مجدد»
+
+saveFullList(fileName, listJson)
+  → قبل از نوشتن، هر آیتمی که مال توکن پارتنر است حذف می‌شود (filterMineOnly)
 
 readMergedContent(fileName): Result<String>
-  → read myGist[fileName] + partnerGist[fileName]
-  → parse each as JSON Array
-  → merge by "id" (یا "date" برای moods) — نسخه جدیدتر برنده
-  → return merged JSON Array String
+  → myGist[fileName]  (قابل ویرایش)
+  + partnerGist[fileName] (فقط خواندنی)
+  → مرج بر اساس id (یا date برای moods)؛ نسخه خودم همیشه برنده است
+  → idهای سمت پارتنر در SecureStorage به‌عنوان «read-only» علامت می‌خورند
+
+isReadOnly(fileName, id): Boolean
+  → UI بر اساس این، دکمه حذف/ویرایش/چک‌باکس را غیرفعال می‌کند
 ```
 
 **فایل‌های داخل هر Gist:**
@@ -89,14 +105,15 @@ readMergedContent(fileName): Result<String>
 couple_shared.json, moods.json, memories.json, messages.json,
 calendar.json, tasks.json, journal.json, wishlist.json,
 bucket_list.json, letters.json, countdowns.json, questions.json,
-expenses.json, timeline.json
+expenses.json, surprises.json, timeline.json, extras.json
 ```
 
-هر `ViewModel` بعد از هر `insert` محلی، **کل لیست لوکال + ریموت را مرج و با `saveFullList` به هر دو Gist می‌نویسد**؛ هنگام `init` هم `pull` می‌کند و موارد جدید ریموت را به Room اضافه می‌کند. به این ترتیب:
+`extras.json` شامل بخش‌های کیوت است: نوت‌های یخچال، عادت‌ها، پلی‌لیست، برنامه قرار،
+گالری، بوس‌شمار، حیوون دونفره، شیشه تعریف و آمار اتاق بازی — این‌ها هم دقیقاً
+همان قانون را دارند (ثبت روی توکن خودم، نمایش دیتای پارتنر با برچسب «فقط خواندنی 👁️»).
 
-- ✅ دیتا **واقعاً روی توکن ثبت** می‌شود (قابل دیدن در https://gist.github.com با همان اکانت)
-- ✅ دیتا **واقعاً از توکن دریافت** می‌شود (مرج دو Gist + لوکال)
-- ✅ حتی اگر یک توکن بسوزد، دیتا روی Gist دیگری زنده است
+**بازخورد واقعی به کاربر:** بعد از هر ثبت، نتیجهٔ واقعی درخواست گیت‌هاب نمایش داده می‌شود:
+«… روی توکن خودت ثبت شد ✅» یا «ثبت نشد ❌ (کد خطا) — تلاش مجدد».
 
 ### رمزنگاری
 
@@ -235,7 +252,42 @@ Splash → Setup (Choose → Token1 → Token2 → Pairing → Complete) → Loc
 
 ## 🔄 چطور دیتا روی توکن ثبت/دریافت می‌شود (تضمین) <a id="ثبت-روی-توکن"></a>
 
-### ثبت (Write)
+### ثبت (Write) — فقط روی توکن خودم
+
+```kotlin
+// در هر ViewModel — مثال Mood
+moodDao.insert(entity)                       // 1) لوکال (آفلاین اول)
+val merged = merge(local, readMyContent())   // 2) مرج فقط با دیتای خودم
+val r = repo.saveFullList("moods.json", …)   // 3) PATCH روی Gist توکن خودم
+_ui.update { it.copy(feedback =
+    if (r.isSuccess) TokenOwnership.saved("حال امروزت")   // «روی توکن خودت ثبت شد ✅»
+    else TokenOwnership.failed(r.exceptionOrNull()))      // «ثبت نشد ❌ کد خطا — تلاش مجدد»
+}
+```
+
+قابل مشاهده: https://gist.github.com با اکانت **خودت** → Gist با Description `CoupleOS-SharedData`.
+روی اکانت پارتنر هیچ چیزی از طرف تو نوشته نمی‌شود.
+
+### دریافت (Read) — از هر دو توکن
+
+```kotlin
+val remote = repo.readMergedContent("moods.json").getOrNull()
+// = دیتای خودم (قابل ویرایش) + دیتای پارتنر (read-only، علامت‌گذاری‌شده)
+```
+
+هر آیتمی که فقط در Gist پارتنر باشد، به‌عنوان read-only ثبت می‌شود و در UI:
+دکمه حذف/ویرایش ندارد و به‌جایش برچسب «از توکن پارتنر 👁️ فقط خواندنی» می‌بینی.
+اگر با API هم تلاش شود، `removeFromList` خطای «این مورد مال پارتنرته» برمی‌گرداند.
+
+### تست دستی
+
+1. اپ را با دو اکانت GitHub جدا جفت کن (A و B)
+2. در گوشی A یک «حال روزانه» ثبت کن → «روی توکن خودت ثبت شد ✅»
+3. Gist اکانت A → `moods.json` شامل آیتم است ✅
+4. Gist اکانت B → **تغییری نکرده** ✅ (چیزی روی توکن پارتنر نوشته نشده)
+5. در گوشی B دکمه ⟳ را بزن → آیتم A دیده می‌شود ولی دکمه حذف ندارد 👁️
+
+## ثبت (Write)
 
 ```kotlin
 // در هر ViewModel — مثال Mood
@@ -367,7 +419,7 @@ npm run dev  # http://localhost:3000
 
 ## ⚠️ نکات مهم
 
-- **Gist خصوصی است** — فقط با توکن مالک دیده می‌شود، اما چون به هر دو Gist می‌نویسیم، هر طرف با توکن خود دیتا را دارد
+- **Gist خصوصی است** — هر کس فقط روی Gist خودش می‌نویسد؛ Gist پارتنر با توکن پارتنر فقط خوانده می‌شود
 - **هیچ توکنی در APK هاردکد نیست** — همه در Keystore
 - **اگر سرور خاموش باشد، اپ کامل کار می‌کند** (فقط Gist)
 - **اگر اینترنت نباشد، فقط لوکال** — بعداً مرج می‌شود

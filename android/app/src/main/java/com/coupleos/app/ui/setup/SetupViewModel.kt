@@ -96,7 +96,7 @@ class SetupViewModel @Inject constructor(
                         isLoading = false,
                         step = SetupStep.ENTER_PARTNER_TOKEN,
                         myGitHubUsername = user.login,
-                        successMessage = "✅ اتصال برقرار شد — ${user.login} (دیتا روی توکن ثبت میشه)",
+                        successMessage = "✅ توکن خودت تایید شد — ${user.login} ✍️ هر چی ثبت کنی روی همین توکن نوشته میشه",
                         error = null,
                     )
                 }
@@ -139,7 +139,7 @@ class SetupViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         partnerGitHubUsername = partnerUser.login,
-                        successMessage = "✅ پارتنر پیدا شد — ${partnerUser.login}",
+                        successMessage = "✅ توکن پارتنر تایید شد — ${partnerUser.login} 👁️ فقط برای بازخوانی دیتای پارتنر استفاده میشه",
                     )
                 }
                 performPairing()
@@ -191,15 +191,17 @@ class SetupViewModel @Inject constructor(
                 // Also save legacy gistId
                 myGist?.let { secureStorage.saveGistId(it) }
 
-                // Verify the tokens can actually WRITE to the gists (needs `gist` scope).
-                // This catches the common case where the token validates but can't store data.
+                // Verify MY token can actually WRITE (needs `gist` scope).
+                // The partner token is READ-ONLY here, so we only check that it can be read.
                 if (myGist != null) {
                     val verify = gitHubRepository.verifyGistWritable(state.personalToken.trim(), myGist)
                     if (verify.isFailure) gistError = "توکن خودت: ${verify.exceptionOrNull()?.message}"
+                } else {
+                    gistError = "Gist توکن خودت ساخته نشد — بدون اون نمی‌تونی چیزی ثبت کنی"
                 }
-                if (partnerGist != null && gistError == null) {
-                    val verify = gitHubRepository.verifyGistWritable(state.partnerToken.trim(), partnerGist)
-                    if (verify.isFailure) gistError = "توکن پارتنر: ${verify.exceptionOrNull()?.message}"
+                if (partnerGist == null && gistError == null) {
+                    // Not fatal: partner may not have opened their app yet.
+                    gistError = null
                 }
 
                 if (gistSuccess && gistError == null) {

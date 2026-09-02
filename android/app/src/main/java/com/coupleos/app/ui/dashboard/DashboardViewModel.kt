@@ -77,7 +77,7 @@ class DashboardViewModel @Inject constructor(
     }
 
     /**
-     * Pull all data from both tokens' gists into local storage,
+     * Read all data: my own gist (writable) plus the partner gist (read-only),
      * so the partner's data shows up automatically without visiting each screen.
      */
     private fun syncFromToken() {
@@ -86,10 +86,10 @@ class DashboardViewModel @Inject constructor(
                 val result = syncManager.pullAll()
                 loadDashboard()
                 if (result.error != null) {
-                    _uiState.update { it.copy(feedbackMessage = "همگام‌سازی ناقص بود: ${result.error}") }
+                    _uiState.update { it.copy(feedbackMessage = "بازخوانی ناقص بود: ${result.error} — تلاش مجدد") }
                 }
             } catch (e: Exception) {
-                _uiState.update { it.copy(feedbackMessage = "خطا در همگام‌سازی: ${e.localizedMessage}") }
+                _uiState.update { it.copy(feedbackMessage = "بازخوانی نشد ❌ ${e.localizedMessage} — تلاش مجدد") }
             }
         }
     }
@@ -232,16 +232,16 @@ class DashboardViewModel @Inject constructor(
                     it.copy(
                         isRefreshing = false,
                         feedbackMessage = if (syncResult.error == null)
-                            "بروزرسانی و همگام‌سازی از توکن انجام شد ✅"
+                            "بازخوانی شد ✅ — از توکن خودت و توکن پارتنر 👁️"
                         else
-                            "همگام‌سازی ناقص: ${syncResult.error}",
+                            "بازخوانی ناقص: ${syncResult.error} — تلاش مجدد",
                     )
                 }
             } catch (e: Exception) {
                 _uiState.update {
                     it.copy(
                         isRefreshing = false,
-                        feedbackMessage = "مشکلی پیش اومد: ${e.localizedMessage}",
+                        feedbackMessage = "مشکلی پیش اومد ❌ ${e.localizedMessage} — تلاش مجدد",
                     )
                 }
             }
