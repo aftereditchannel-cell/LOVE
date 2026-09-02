@@ -62,12 +62,14 @@ class RealtimeChannel @Inject constructor(
     private val jobs = mutableMapOf<String, Job>()
     private val subscribers = mutableMapOf<String, Int>()
 
+    private fun mutableStream(fileName: String): MutableStateFlow<Snapshot?> = synchronized(this) {
+        flows.getOrPut(fileName) { MutableStateFlow(null) }
+    }
+
     /**
      * Stream of live updates for one gist file (e.g. messages.json, extras.json).
      */
-    fun stream(fileName: String): StateFlow<Snapshot?> = synchronized(this) {
-        flows.getOrPut(fileName) { MutableStateFlow(null) }
-    }
+    fun stream(fileName: String): StateFlow<Snapshot?> = mutableStream(fileName)
 
     /** Start (or join) the live loop for a file. Call from a screen's onStart. */
     fun subscribe(fileName: String) {
@@ -97,9 +99,9 @@ class RealtimeChannel @Inject constructor(
         scope.launch { tick(fileName, force = true) }
     }
 
-    private suspend fun loop(fileName: String) {
+    private suspend fun loop(fileName: String) = kotlinx.coroutines.coroutineScope {
         var idleTicks = 0
-        while (scope.isActive) {
+        while (isActive) {
             val changed = tick(fileName, force = false)
             idleTicks = if (changed) 0 else idleTicks + 1
             val interval =
@@ -124,7 +126,7 @@ class RealtimeChannel @Inject constructor(
             _live.value = true
 
             if (mergedChanged || force) {
-                stream(fileName).value = Snapshot(fileName, merged, partnerChanged)
+                mutableStream(fileName).value = Snapshot(fileName, merged, partnerChanged)
                 true
             } else {
                 false
