@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.WishlistDao
 import com.coupleos.app.data.local.entity.WishlistEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,21 +48,30 @@ class WishlistViewModel @Inject constructor(
         viewModelScope.launch{
             val now=LocalDateTime.now().toString()
             dao.insert(WishlistEntity(id=crypto.generateId(), title=title, description=desc, category=cat, privacy=privacy, createdBy=storage.getUserId()?:"", createdAt=now, updatedAt=now))
-            sync()
-            _ui.update{ it.copy(feedback="آرزو ثبت و روی توکن ذخیره شد ⭐")}
+            val r = sync()
+            _ui.update{ it.copy(feedback = if(r.isSuccess) TokenOwnership.saved("آرزو") else TokenOwnership.failed(r.exceptionOrNull()))}
         }
     }
+    fun isReadOnly(id:String) = repo.isReadOnly(GitHubRepository.WISHLIST_FILE, id)
     fun toggleComplete(id:String){
         viewModelScope.launch{
+            if(isReadOnly(id)){ _ui.update{ it.copy(feedback=TokenOwnership.READ_ONLY)}; return@launch }
             val item = items.value.find{ it.id==id} ?: return@launch
             dao.update(item.copy(isCompleted=!item.isCompleted, updatedAt=LocalDateTime.now().toString()))
-            sync()
+            val r = sync()
+            if(r.isFailure) _ui.update{ it.copy(feedback=TokenOwnership.failed(r.exceptionOrNull()))}
         }
     }
-    fun delete(id:String){ viewModelScope.launch{ dao.softDelete(id, LocalDateTime.now().toString()); repo.removeFromList(GitHubRepository.WISHLIST_FILE, id); sync() } }
-    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام سازی شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
-    private suspend fun sync(){
-        try{
+    fun delete(id:String){ viewModelScope.launch{
+        if(isReadOnly(id)){ _ui.update{ it.copy(feedback=TokenOwnership.READ_ONLY)}; return@launch }
+        dao.softDelete(id, LocalDateTime.now().toString())
+        val r = repo.removeFromList(GitHubRepository.WISHLIST_FILE, id)
+        sync()
+        _ui.update{ it.copy(feedback = if(r.isSuccess) "حذف شد و از توکن خودت پاک شد ✅" else TokenOwnership.failed(r.exceptionOrNull()))}
+    } }
+    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="بازخوانی شد ✅ — دیتای پارتنر از توکن خودش خونده شد 👁️")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
+    private suspend fun sync(): Result<Unit> {
+        return try{
             val remoteStr=repo.readMergedContent(GitHubRepository.WISHLIST_FILE).getOrNull()?:"[]"
             val remote=try{ json.decodeFromString<List<WishlistSyncData>>(remoteStr)}catch(_:Exception){ emptyList()}
             val local=items.value.map{ WishlistSyncData(it.id,it.title,it.description,it.category,it.privacy,it.isCompleted,it.createdBy,it.createdAt)}
@@ -69,7 +79,7 @@ class WishlistViewModel @Inject constructor(
             remote.forEach{ merged[it.id]=it}
             local.forEach{ merged[it.id]=it}
             repo.saveFullList(GitHubRepository.WISHLIST_FILE, json.encodeToString(merged.values.toList()))
-        }catch(_:Exception){}
+        }catch(e:Exception){ Result.failure(e) }
     }
     fun clear(){ _ui.update{ it.copy(feedback=null)}}
 }

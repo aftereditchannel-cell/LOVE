@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.BucketItemDao
 import com.coupleos.app.data.local.entity.BucketItemEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -40,23 +41,33 @@ class BucketViewModel @Inject constructor(
             }
         }catch(_:Exception){}
     }}
+    fun isReadOnly(id:String) = repo.isReadOnly(GitHubRepository.BUCKET_FILE, id)
+
     fun add(title:String, desc:String){
         viewModelScope.launch{
             val now=LocalDateTime.now().toString()
             dao.insert(BucketItemEntity(id=crypto.generateId(), title=title, description=desc, createdBy=storage.getUserId()?:"", createdAt=now, updatedAt=now))
-            sync()
-            _ui.update{ it.copy(feedback="به لیست اضافه و روی توکن ذخیره شد ✓")}
+            val r = sync()
+            _ui.update{ it.copy(feedback = if(r.isSuccess) TokenOwnership.saved("آیتم لیست آرزوها") else TokenOwnership.failed(r.exceptionOrNull()))}
         }
     }
     fun toggle(id:String){ viewModelScope.launch{
+        if(isReadOnly(id)){ _ui.update{ it.copy(feedback=TokenOwnership.READ_ONLY)}; return@launch }
         val itm=items.value.find{ it.id==id} ?: return@launch
         dao.update(itm.copy(isCompleted=!itm.isCompleted, completedDate=if(!itm.isCompleted) java.time.LocalDate.now().toString() else "", updatedAt=LocalDateTime.now().toString()))
-        sync()
+        val r = sync()
+        if(r.isFailure) _ui.update{ it.copy(feedback=TokenOwnership.failed(r.exceptionOrNull()))}
     }}
-    fun delete(id:String){ viewModelScope.launch{ dao.softDelete(id, LocalDateTime.now().toString()); repo.removeFromList(GitHubRepository.BUCKET_FILE, id); sync() }}
-    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
-    private suspend fun sync(){
-        try{
+    fun delete(id:String){ viewModelScope.launch{
+        if(isReadOnly(id)){ _ui.update{ it.copy(feedback=TokenOwnership.READ_ONLY)}; return@launch }
+        dao.softDelete(id, LocalDateTime.now().toString())
+        val r = repo.removeFromList(GitHubRepository.BUCKET_FILE, id)
+        sync()
+        _ui.update{ it.copy(feedback = if(r.isSuccess) "حذف شد و از توکن خودت پاک شد ✅" else TokenOwnership.failed(r.exceptionOrNull()))}
+    }}
+    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="بازخوانی شد ✅ — دیتای پارتنر از توکن خودش خونده شد 👁️")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
+    private suspend fun sync(): Result<Unit> {
+        return try{
             val remoteStr=repo.readMergedContent(GitHubRepository.BUCKET_FILE).getOrNull()?:"[]"
             val remote=try{ json.decodeFromString<List<BucketSyncData>>(remoteStr)}catch(_:Exception){ emptyList()}
             val local=items.value.map{ BucketSyncData(it.id,it.title,it.description,it.isCompleted,it.completedDate,it.photoUrl,it.createdBy,it.createdAt)}
@@ -64,7 +75,7 @@ class BucketViewModel @Inject constructor(
             remote.forEach{ merged[it.id]=it}
             local.forEach{ merged[it.id]=it}
             repo.saveFullList(GitHubRepository.BUCKET_FILE, json.encodeToString(merged.values.toList()))
-        }catch(_:Exception){}
+        }catch(e:Exception){ Result.failure(e) }
     }
     fun clear(){ _ui.update{ it.copy(feedback=null)}}
 }

@@ -31,14 +31,14 @@ fun WishlistScreen(vm: WishlistViewModel = hiltViewModel()){
                         Column(Modifier.padding(16.dp)){
                             Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically){
                                 Text(w.title, style=MaterialTheme.typography.titleSmall, color=TextPrimary, modifier=Modifier.weight(1f))
-                                Checkbox(checked=w.isCompleted, onCheckedChange={ vm.toggleComplete(w.id) })
+                                Checkbox(checked=w.isCompleted, enabled=!vm.isReadOnly(w.id), onCheckedChange={ vm.toggleComplete(w.id) })
                             }
                             if(w.description.isNotEmpty()){ Spacer(Modifier.height(4.dp)); Text(w.description, style=MaterialTheme.typography.bodySmall, color=TextSecondary)}
                             if(w.category.isNotEmpty()) Text("دسته: ${w.category}", style=MaterialTheme.typography.labelSmall, color=Primary)
                             Spacer(Modifier.height(6.dp))
                             Row(Modifier.fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween){
                                 Text(if(w.privacy=="PRIVATE") "🔒 خصوصی" else "💞 مشترک", style=MaterialTheme.typography.labelSmall, color=TextTertiary)
-                                TextButton(onClick={ vm.delete(w.id) }){ Text("حذف", color=Danger, fontSize=12.sp)}
+                                if(vm.isReadOnly(w.id)) Text("از توکن پارتنر 👁️", style=MaterialTheme.typography.labelSmall, color=TextTertiary) else TextButton(onClick={ vm.delete(w.id) }){ Text("حذف", color=Danger, fontSize=12.sp)}
                             }
                         }
                     }

@@ -10,17 +10,17 @@ import javax.inject.Singleton
 
 /**
  * Repository for syncing ALL app data with GitHub via Private Gists.
- * 
- * FIXED ARCHITECTURE — data is truly registered and retrieved on token:
- * - Each person has own GitHub PAT (ghp_...) — stored as personalToken / partnerToken
- * - Each token owns its own private Gist (myGistId / partnerGistId)
- * - EVERY write operation saves to BOTH gists when possible (dual-write), guaranteeing data is on token
- * - EVERY read operation merges data from BOTH gists + local, deduplicating by ID / date
- * - If one token/gist is unavailable, data still survives on the other — eventual consistency
- * - All entity types are now supported: moods, memories, messages, calendar, tasks, journal,
- *   wishlist, bucketList, countdowns, letters, questions, etc.
- * 
- * This fixes: "اتصال رو تایید میکنه ولی دیتا رو واقعا روی توکن ثبت یا دریافت نمیکنه"
+ *
+ * OWNERSHIP MODEL — write on MY token, read-only from PARTNER token:
+ * - Each person has own GitHub PAT (ghp_...) — personalToken (mine) / partnerToken (theirs)
+ * - MY token owns MY private Gist. Everything I create/edit/delete is written ONLY there.
+ * - The PARTNER token is used strictly READ-ONLY: we never create, update or delete
+ *   anything on the partner's gist. Their gist is created by their own device.
+ * - Reads merge my gist (writable) + partner gist (read-only) so both sides see everything,
+ *   and every id coming from the partner side is recorded in SecureStorage so the UI can
+ *   block editing/deleting it and the sync engine never pushes it back onto my token.
+ * - All entity types are supported: moods, memories, messages, calendar, tasks, journal,
+ *   wishlist, bucketList, countdowns, letters, questions, expenses, surprises, timeline.
  */
 @Singleton
 class GitHubRepository @Inject constructor(
@@ -48,12 +48,13 @@ class GitHubRepository @Inject constructor(
         const val EXPENSES_FILE = "expenses.json"
         const val SURPRISES_FILE = "surprises.json"
         const val TIMELINE_FILE = "timeline.json"
+        const val EXTRAS_FILE = "extras.json"
 
         val ALL_FILES = listOf(
             SHARED_FILE, MOODS_FILE, MEMORIES_FILE, MESSAGES_FILE,
             CALENDAR_FILE, TASKS_FILE, JOURNAL_FILE, WISHLIST_FILE,
             BUCKET_FILE, LETTERS_FILE, COUNTDOWNS_FILE, QUESTIONS_FILE,
-            EXPENSES_FILE, SURPRISES_FILE, TIMELINE_FILE
+            EXPENSES_FILE, SURPRISES_FILE, TIMELINE_FILE, EXTRAS_FILE
         )
     }
 
@@ -120,6 +121,7 @@ class GitHubRepository @Inject constructor(
             // Create new shared gist with all files initialized
             val initialFiles = ALL_FILES.associate { fileName ->
                 val initialContent = when (fileName) {
+                    EXTRAS_FILE -> "{}"
                     SHARED_FILE -> json.encodeToString(CoupleSharedData(
                         personAName = secureStorage.getPersonAName(),
                         personBName = secureStorage.getPersonBName(),
@@ -157,7 +159,7 @@ class GitHubRepository @Inject constructor(
         var myGistId = secureStorage.getMyGistId()
         var partnerGistId = secureStorage.getPartnerGistId()
 
-        // Try to ensure my gist
+        // MY gist — created/owned by me, this is the only writable target.
         if (myGistId == null) {
             val myToken = secureStorage.getPersonalToken()
             if (myToken != null) {
@@ -169,19 +171,38 @@ class GitHubRepository @Inject constructor(
             }
         }
 
-        // Try to ensure partner gist
+        // PARTNER gist — READ ONLY. We only *look it up*, never create it.
         if (partnerGistId == null) {
             val partnerToken = secureStorage.getPartnerToken()
             if (partnerToken != null) {
-                val result = getOrCreateGistForToken(partnerToken)
-                if (result.isSuccess) {
-                    partnerGistId = result.getOrNull()
-                    partnerGistId?.let { secureStorage.savePartnerGistId(it) }
-                }
+                partnerGistId = findGistForToken(partnerToken)
+                partnerGistId?.let { secureStorage.savePartnerGistId(it) }
             }
         }
 
         return Pair(myGistId, partnerGistId)
+    }
+
+    /** Look up (never create) the couple gist owned by a token. */
+    private suspend fun findGistForToken(token: String): String? {
+        return try {
+            val gists = gitHubApi.listGists(authHeader(token))
+            if (!gists.isSuccessful) null
+            else gists.body()?.find { it.description == COUPLE_GIST_DESCRIPTION }?.id
+        } catch (_: Exception) { null }
+    }
+
+    /** Ensure only MY gist exists — used before any write. */
+    suspend fun ensureMyGist(): Result<Pair<String, String>> {
+        val myToken = secureStorage.getPersonalToken()
+            ?: return Result.failure(Exception("توکن شخصی ثبت نشده — بدون توکن خودت نمی‌تونی چیزی ثبت کنی"))
+        val existing = secureStorage.getMyGistId()
+        if (existing != null) return Result.success(myToken to existing)
+        val created = getOrCreateGistForToken(myToken)
+        return created.fold(
+            onSuccess = { secureStorage.saveMyGistId(it); Result.success(myToken to it) },
+            onFailure = { Result.failure(it) }
+        )
     }
 
     /**
@@ -193,51 +214,63 @@ class GitHubRepository @Inject constructor(
         else Result.failure(Exception("Gist ساخته نشد"))
     }
 
-    // ── Core Data Sync — DUAL WRITE / MERGED READ ──────────
+    // ── Core Data Sync — WRITE MINE / READ BOTH ────────────
 
     /**
-     * Save content to gist(s) — dual write to both tokens' gists
-     * This guarantees data is registered on token
+     * Write content to MY gist only. The partner gist is never touched.
+     * Returns a precise Persian error (with the HTTP code) when it fails so the
+     * UI can show "ثبت نشد — تلاش مجدد".
      */
     suspend fun saveToGist(fileName: String, content: String): Result<Unit> {
-        val (myGistId, partnerGistId) = ensureBothGists()
-        
-        var lastError: Exception? = null
-        var successCount = 0
+        val (myToken, myGistId) = ensureMyGist().getOrElse { return Result.failure(it as? Exception ?: Exception(it.message)) }
 
-        // Save to my gist
-        val myToken = secureStorage.getPersonalToken()
-        if (myToken != null && myGistId != null) {
-            try {
-                val response = gitHubApi.updateGist(
-                    authHeader(myToken),
-                    myGistId,
-                    UpdateGistRequest(files = mapOf(fileName to GistFileContent(content)))
-                )
-                if (response.isSuccessful) successCount++ else lastError = Exception("My gist: ${response.code()}")
-            } catch (e: Exception) {
-                lastError = e
+        return try {
+            val response = gitHubApi.updateGist(
+                authHeader(myToken),
+                myGistId,
+                UpdateGistRequest(files = mapOf(fileName to GistFileContent(content)))
+            )
+            if (response.isSuccessful) {
+                secureStorage.saveLastSync(System.currentTimeMillis().toString())
+                Result.success(Unit)
+            } else {
+                val code = response.code()
+                val msg = when (code) {
+                    401 -> "ثبت نشد — توکن خودت نامعتبره (401). دوباره تلاش کن"
+                    403 -> "ثبت نشد — توکن خودت دسترسی gist نداره (403). دوباره تلاش کن"
+                    404 -> "ثبت نشد — Gist خودت پیدا نشد (404). دوباره تلاش کن"
+                    else -> "ثبت نشد — خطای گیت‌هاب (کد $code). دوباره تلاش کن"
+                }
+                Result.failure(Exception(msg))
             }
+        } catch (e: Exception) {
+            Result.failure(Exception("ثبت نشد — اتصال برقرار نشد: ${e.localizedMessage}. دوباره تلاش کن"))
         }
+    }
 
-        // Save to partner gist as backup — ensures token data replication
-        val partnerToken = secureStorage.getPartnerToken()
-        if (partnerToken != null && partnerGistId != null) {
-            try {
-                val response = gitHubApi.updateGist(
-                    authHeader(partnerToken),
-                    partnerGistId,
-                    UpdateGistRequest(files = mapOf(fileName to GistFileContent(content)))
-                )
-                if (response.isSuccessful) successCount++ else lastError = Exception("Partner gist: ${response.code()}")
-            } catch (e: Exception) {
-                // Partner save failure is not fatal if my gist succeeded
-                if (successCount == 0) lastError = e
-            }
+    /**
+     * True when this item belongs to the partner's token — it is read-only here.
+     */
+    fun isReadOnly(fileName: String, id: String): Boolean = secureStorage.isPartnerOwned(fileName, id)
+
+    /**
+     * Ids of this file that came from the partner token (read-only on this device).
+     */
+    fun readOnlyIds(fileName: String): Set<String> = secureStorage.getPartnerOwnedIds(fileName)
+
+    /**
+     * Drop everything the partner owns before writing to my token.
+     * My gist must contain ONLY my own data.
+     */
+    private fun filterMineOnly(fileName: String, arr: List<JsonElement>): List<JsonElement> {
+        val partnerIds = secureStorage.getPartnerOwnedIds(fileName)
+        if (partnerIds.isEmpty()) return arr
+        return arr.filter { el ->
+            val obj = el as? JsonObject ?: return@filter true
+            val id = obj["id"]?.jsonPrimitive?.contentOrNull
+                ?: obj["date"]?.jsonPrimitive?.contentOrNull
+            id == null || !partnerIds.contains(id)
         }
-
-        return if (successCount > 0) Result.success(Unit)
-        else Result.failure(lastError ?: Exception("هیچ Gistی در دسترس نیست"))
     }
 
     /**
@@ -247,10 +280,10 @@ class GitHubRepository @Inject constructor(
     suspend fun saveMergedList(fileName: String, newItemJson: String, idExtractor: (JsonObject) -> String?): Result<Unit> {
         return try {
             // Try to read existing remote list
-            val existingContent = readMergedContent(fileName).getOrNull() ?: "[]"
+            val existingContent = readMyContent(fileName).getOrNull() ?: "[]"
             val newElement = json.parseToJsonElement(newItemJson).let {
                 if (it is JsonObject) it else null
-            } ?: return saveToGist(fileName, "[$newItemJson]")
+            } ?: return saveFullList(fileName, "[$newItemJson]")
 
             val existingArray = try {
                 json.parseToJsonElement(existingContent).jsonArray
@@ -280,10 +313,10 @@ class GitHubRepository @Inject constructor(
                     append("]")
                 }
             }
-            saveToGist(fileName, final)
+            saveFullList(fileName, final)
         } catch (e: Exception) {
             // Fallback: direct save of array with item
-            saveToGist(fileName, "[$newItemJson]")
+            saveFullList(fileName, "[$newItemJson]")
         }
     }
 
@@ -292,13 +325,19 @@ class GitHubRepository @Inject constructor(
      * This replaces the file content with complete list — used for bulk sync
      */
     suspend fun saveFullList(fileName: String, listJson: String): Result<Unit> {
-        // Validate it's JSON array
-        try {
+        val arr = try {
             json.parseToJsonElement(listJson).jsonArray
         } catch (e: Exception) {
-            return Result.failure(Exception("Invalid JSON array"))
+            return Result.failure(Exception("ثبت نشد — داده نامعتبر بود"))
         }
-        return saveToGist(fileName, listJson)
+        // Never push partner-owned (read-only) items onto my token.
+        val mine = filterMineOnly(fileName, arr)
+        val final = buildString {
+            append("[")
+            mine.forEachIndexed { idx, el -> if (idx > 0) append(","); append(json.encodeToString(el)) }
+            append("]")
+        }
+        return saveToGist(fileName, final)
     }
 
     /**
@@ -306,11 +345,14 @@ class GitHubRepository @Inject constructor(
      * Propagates deletions so removed items do not resurrect on the partner's phone.
      */
     suspend fun removeFromList(fileName: String, id: String): Result<Unit> {
+        if (secureStorage.isPartnerOwned(fileName, id)) {
+            return Result.failure(Exception("این مورد مال پارتنرته — فقط قابل مشاهده‌ست و نمی‌تونی حذف/ویرایشش کنی"))
+        }
         return try {
-            val existing = readMergedContent(fileName).getOrNull() ?: return Result.success(Unit)
+            val existing = readMyContent(fileName).getOrNull() ?: return Result.success(Unit)
             val arr = try { json.parseToJsonElement(existing).jsonArray }
                       catch (_: Exception) { return Result.success(Unit) }
-            val filtered = arr.filter { elem ->
+            val filtered = filterMineOnly(fileName, arr).filter { elem ->
                 val obj = elem as? JsonObject
                 (obj?.get("id")?.jsonPrimitive?.contentOrNull) != id
             }
@@ -392,37 +434,20 @@ class GitHubRepository @Inject constructor(
      * Returns merged JSON array string deduplicated by id
      */
     suspend fun readMergedContent(fileName: String): Result<String> {
-        val myToken = secureStorage.getPersonalToken()
-        val partnerToken = secureStorage.getPartnerToken()
-        val myGistId = secureStorage.getMyGistId()
-        val partnerGistId = secureStorage.getPartnerGistId()
-
-        var myContent: String? = null
-        var partnerContent: String? = null
-
-        if (myToken != null) {
-            // Try with stored ID, otherwise via listing
-            val result = if (myGistId != null) readGistFile(myToken, myGistId, fileName)
-                         else readGistFileViaListing(myToken, fileName)
-            if (result.isSuccess) myContent = result.getOrNull()
-        }
-
-        if (partnerToken != null) {
-            val result = if (partnerGistId != null) readGistFile(partnerToken, partnerGistId, fileName)
-                         else readGistFileViaListing(partnerToken, fileName)
-            if (result.isSuccess) partnerContent = result.getOrNull()
-        }
+        val myContent = readMyContent(fileName).getOrNull()
+        val partnerContent = readPartnerContent(fileName).getOrNull()
 
         if (myContent == null && partnerContent == null) {
             return Result.failure(Exception("هیچ داده‌ای یافت نشد"))
         }
 
-        // Merge arrays
         return try {
             val merged = mutableMapOf<String, JsonElement>()
             val order = mutableListOf<String>()
+            val partnerIds = mutableSetOf<String>()
+            val myIds = mutableSetOf<String>()
 
-            fun addContent(content: String?) {
+            fun addContent(content: String?, fromPartner: Boolean) {
                 if (content == null) return
                 try {
                     val arr = json.parseToJsonElement(content).jsonArray
@@ -431,15 +456,19 @@ class GitHubRepository @Inject constructor(
                         val id = obj?.get("id")?.jsonPrimitive?.contentOrNull
                             ?: obj?.get("date")?.jsonPrimitive?.contentOrNull
                             ?: elem.toString().hashCode().toString()
+                        if (fromPartner) partnerIds.add(id) else myIds.add(id)
                         if (!merged.containsKey(id)) order.add(id)
-                        // Keep newer version if duplicate — compare createdAt if exists
-                        merged[id] = elem
+                        // My own copy always wins over the partner's read-only copy.
+                        if (!fromPartner || !merged.containsKey(id)) merged[id] = elem
                     }
                 } catch (_: Exception) {}
             }
 
-            addContent(myContent)
-            addContent(partnerContent)
+            addContent(myContent, fromPartner = false)
+            addContent(partnerContent, fromPartner = true)
+
+            // Anything the partner owns (and I don't) is read-only on this device.
+            secureStorage.addPartnerOwnedIds(fileName, partnerIds - myIds)
 
             val mergedArray = order.mapNotNull { merged[it] }
             val resultJson = buildString {
@@ -452,9 +481,24 @@ class GitHubRepository @Inject constructor(
             }
             Result.success(resultJson)
         } catch (e: Exception) {
-            // Fallback to whichever succeeded
             Result.success(myContent ?: partnerContent ?: "[]")
         }
+    }
+
+    /** Read a file from MY gist only (the writable side). */
+    suspend fun readMyContent(fileName: String): Result<String> {
+        val myToken = secureStorage.getPersonalToken() ?: return Result.failure(Exception("توکن شخصی ثبت نشده"))
+        val myGistId = secureStorage.getMyGistId()
+        return if (myGistId != null) readGistFile(myToken, myGistId, fileName)
+               else readGistFileViaListing(myToken, fileName)
+    }
+
+    /** Read a file from the PARTNER gist — strictly read-only. */
+    suspend fun readPartnerContent(fileName: String): Result<String> {
+        val partnerToken = secureStorage.getPartnerToken() ?: return Result.failure(Exception("توکن پارتنر ثبت نشده"))
+        val partnerGistId = secureStorage.getPartnerGistId()
+        return if (partnerGistId != null) readGistFile(partnerToken, partnerGistId, fileName)
+               else readGistFileViaListing(partnerToken, fileName)
     }
 
     private suspend fun readGistFileViaListing(token: String, fileName: String): Result<String> {
@@ -515,13 +559,24 @@ class GitHubRepository @Inject constructor(
     }
 
     /**
+     * Save a raw JSON object (not a list) onto MY token only.
+     * Used for the "extras" bundle: notes, habits, songs, date plans, photos, pet, games.
+     */
+    suspend fun saveObject(fileName: String, objectJson: String): Result<Unit> {
+        try { json.parseToJsonElement(objectJson) } catch (e: Exception) {
+            return Result.failure(Exception("ثبت نشد — داده نامعتبر بود"))
+        }
+        return saveToGist(fileName, objectJson)
+    }
+
+    /**
      * Save a single mood entry with merged logic
      */
     suspend fun saveMood(moodJson: String): Result<Unit> {
         return try {
             // For moods we need upsert by date+user, so we merge full list replacement is safer
             // Read existing
-            val existing = readMergedContent(MOODS_FILE).getOrNull() ?: "[]"
+            val existing = readMyContent(MOODS_FILE).getOrNull() ?: "[]"
             val newObj = json.parseToJsonElement(moodJson).jsonObject
             val newDate = newObj["date"]?.jsonPrimitive?.contentOrNull
             val arr = try { json.parseToJsonElement(existing).jsonArray } catch (_: Exception) { JsonArray(emptyList()) }
@@ -541,7 +596,7 @@ class GitHubRepository @Inject constructor(
                 merged.forEachIndexed { i, e -> if (i>0) append(","); append(json.encodeToString(e)) }
                 append("]")
             }
-            saveToGist(MOODS_FILE, final)
+            saveFullList(MOODS_FILE, final)
         } catch (e: Exception) { Result.failure(e) }
     }
 }

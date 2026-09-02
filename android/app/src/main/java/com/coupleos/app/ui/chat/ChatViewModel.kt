@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.MessageDao
 import com.coupleos.app.data.local.entity.MessageEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -70,7 +71,9 @@ class ChatViewModel @Inject constructor(
                         if (existing == null) {
                             messageDao.insert(MessageEntity(
                                 id = item.id,
-                                coupleId = item.coupleId,
+                                // Partner devices generate their own coupleId; normalize it so
+                                // their messages (read-only) still appear in my thread.
+                                coupleId = secureStorage.getCoupleId() ?: item.coupleId,
                                 senderId = item.senderId,
                                 content = item.content,
                                 type = item.type,
@@ -109,16 +112,21 @@ class ChatViewModel @Inject constructor(
             messageDao.insert(message)
             _uiState.update { it.copy(messageText = "") }
 
-            // Sync to token (GitHub Gist)
-            syncToGist()
+            // Register on MY token only
+            val r = syncToGist()
+            _uiState.update { it.copy(feedbackMessage = if (r.isSuccess) "پیام روی توکن خودت ثبت شد ✅" else TokenOwnership.failed(r.exceptionOrNull())) }
         }
     }
 
+    fun isReadOnly(id: String) = gitHubRepository.isReadOnly(GitHubRepository.MESSAGES_FILE, id)
+
     fun deleteMessage(id: String) {
         viewModelScope.launch {
+            if (isReadOnly(id)) { _uiState.update { it.copy(feedbackMessage = "این پیام از توکن پارتنرته — نمی‌تونی حذفش کنی 👁️") }; return@launch }
             messageDao.softDelete(id, LocalDateTime.now().toString())
-            gitHubRepository.removeFromList(GitHubRepository.MESSAGES_FILE, id)
+            val r = gitHubRepository.removeFromList(GitHubRepository.MESSAGES_FILE, id)
             syncToGist()
+            _uiState.update { it.copy(feedbackMessage = if (r.isSuccess) "پیام از توکن خودت حذف شد ✅" else TokenOwnership.failed(r.exceptionOrNull())) }
         }
     }
 
@@ -127,14 +135,14 @@ class ChatViewModel @Inject constructor(
             _uiState.update { it.copy(isRefreshing = true) }
             pullFromGist()
             syncToGist()
-            _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "دریافت از توکن ✅") }
+            _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "بازخوانی شد ✅ — پیام‌های پارتنر از توکن خودش خونده شد 👁️") }
             kotlinx.coroutines.delay(2000)
             _uiState.update { it.copy(feedbackMessage = null) }
         }
     }
 
-    private suspend fun syncToGist() {
-        try {
+    private suspend fun syncToGist(): Result<Unit> {
+        return try {
             val remoteStr = gitHubRepository.readMergedContent(GitHubRepository.MESSAGES_FILE).getOrNull() ?: "[]"
             val remoteList = try { json.decodeFromString<List<MessageSyncData>>(remoteStr) } catch (_: Exception) { emptyList() }
             // Get local last 100 messages
@@ -145,12 +153,8 @@ class ChatViewModel @Inject constructor(
             remoteList.forEach { merged[it.id] = it }
             localList.forEach { merged[it.id] = it }
             val finalJson = json.encodeToString(merged.values.toList().sortedBy { it.createdAt })
-            val result = gitHubRepository.saveFullList(GitHubRepository.MESSAGES_FILE, finalJson)
-            if (result.isSuccess) {
-                // Mark synced
-                // no per-id mark needed for now
-            }
-        } catch (_: Exception) {}
+            gitHubRepository.saveFullList(GitHubRepository.MESSAGES_FILE, finalJson)
+        } catch (e: Exception) { Result.failure(e) }
     }
 
     fun clearFeedback() { _uiState.update { it.copy(feedbackMessage = null) } }

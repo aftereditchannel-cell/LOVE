@@ -98,7 +98,7 @@ fun MemoriesScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         items(memories, key = { it.id }) { memory ->
-                            MemoryCard(memory = memory, onFavoriteToggle = { viewModel.toggleFavorite(memory) })
+                            MemoryCard(memory = memory, readOnly = viewModel.isReadOnly(memory.id), onFavoriteToggle = { viewModel.toggleFavorite(memory) })
                         }
                         item { Spacer(modifier = Modifier.height(80.dp)) }
                     }
@@ -119,14 +119,14 @@ fun MemoriesScreen(
 }
 
 @Composable
-private fun MemoryCard(memory: MemoryEntity, onFavoriteToggle: () -> Unit) {
+private fun MemoryCard(memory: MemoryEntity, readOnly: Boolean = false, onFavoriteToggle: () -> Unit) {
     Box(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Surface).padding(16.dp),
     ) {
         Column {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 Text(text = memory.title, style = MaterialTheme.typography.titleMedium, color = TextPrimary, modifier = Modifier.weight(1f))
-                IconButton(onClick = onFavoriteToggle, modifier = Modifier.size(32.dp)) {
+                IconButton(onClick = onFavoriteToggle, enabled = !readOnly, modifier = Modifier.size(32.dp)) {
                     Icon(
                         imageVector = if (memory.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                         contentDescription = "Favorite",
@@ -143,8 +143,9 @@ private fun MemoryCard(memory: MemoryEntity, onFavoriteToggle: () -> Unit) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(text = memory.date, style = MaterialTheme.typography.labelSmall, color = TextTertiary)
                 if (memory.location.isNotEmpty()) Text(text = "📍 ${memory.location}", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
+                if (readOnly) Text(text = "👁️ از توکن پارتنر", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
                 Text(
-                    text = if (memory.isSynced) "☁️ همگام" else "📱 لوکال",
+                    text = if (readOnly) "👁️ فقط خواندنی" else if (memory.isSynced) "✍️ روی توکن خودت" else "📱 لوکال",
                     style = MaterialTheme.typography.labelSmall,
                     color = if (memory.isSynced) Success else TextTertiary,
                 )

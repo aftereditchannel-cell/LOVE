@@ -58,7 +58,10 @@ fun TasksScreen(viewModel: TasksViewModel = hiltViewModel()){
                                         if(t.dueDate.isNotEmpty()) Text("موعد: ${t.dueDate}", style=MaterialTheme.typography.labelSmall, color=TextTertiary)
                                         Text("مسئول: ${t.assignedTo}", style=MaterialTheme.typography.labelSmall, color=Primary)
                                     }
-                                    Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){
+                                    val readOnly = viewModel.isReadOnly(t.id)
+                                    if(readOnly){
+                                        Text("از توکن پارتنر 👁️ فقط خواندنی", style=MaterialTheme.typography.labelSmall, color=TextTertiary)
+                                    } else Row(horizontalArrangement=Arrangement.spacedBy(4.dp)){
                                         if(t.status!="DONE") Button(onClick={ viewModel.updateStatus(t.id, "DONE") }, colors=ButtonDefaults.buttonColors(containerColor=Success), contentPadding=PaddingValues(horizontal=12.dp, vertical=6.dp)){ Text("انجام شد", fontSize=12.sp)}
                                         else Button(onClick={ viewModel.updateStatus(t.id, "TODO") }, colors=ButtonDefaults.buttonColors(containerColor=TextTertiary), contentPadding=PaddingValues(horizontal=12.dp, vertical=6.dp)){ Text("بازگشایی", fontSize=12.sp)}
                                         TextButton(onClick={ viewModel.deleteTask(t.id)}){ Text("حذف", color=Danger, fontSize=12.sp)}

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.SurpriseDao
 import com.coupleos.app.data.local.entity.SurpriseEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,25 +49,27 @@ class SurpriseViewModel @Inject constructor(
         viewModelScope.launch{
             val now=LocalDateTime.now().toString()
             dao.insert(SurpriseEntity(id=crypto.generateId(), title=title, content=content, triggerType=trigger, createdBy=uid, recipientId=storage.getPartnerName(), createdAt=now))
-            sync()
-            _ui.update{ it.copy(feedback="سورپرایز ساخته و روی توکن ذخیره شد 🎁")}
+            val r = sync()
+            _ui.update{ it.copy(feedback = if(r.isSuccess) TokenOwnership.saved("سورپرایز") else TokenOwnership.failed(r.exceptionOrNull()))}
         }
     }
+    fun isReadOnly(id:String) = repo.isReadOnly(GitHubRepository.SURPRISES_FILE, id)
     fun reveal(id:String){
         viewModelScope.launch{
             val item = forMe.value.find{ it.id==id} ?: mine.value.find{ it.id==id} ?: return@launch
             dao.update(item.copy(isRevealed=true))
-            sync()
+            // partner-owned surprises are read-only: reveal state stays on this device
+            if(!isReadOnly(id)) sync()
         }
     }
-    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)}}}
-    private suspend fun sync(){
-        try{
+    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="بازخوانی شد ✅ — دیتای پارتنر از توکن خودش خونده شد 👁️")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)}}}
+    private suspend fun sync(): Result<Unit> {
+        return try{
             val remoteStr=repo.readMergedContent(GitHubRepository.SURPRISES_FILE).getOrNull()?:"[]"
             val remote=try{ json.decodeFromString<List<SurpriseSyncData>>(remoteStr)}catch(_:Exception){ emptyList()}
             val local=(mine.value+forMe.value).map{ SurpriseSyncData(it.id,it.title,it.content,it.triggerType,it.triggerValue,it.isRevealed,it.createdBy,it.recipientId,it.createdAt)}
             val merged=mutableMapOf<String, SurpriseSyncData>(); remote.forEach{ merged[it.id]=it}; local.forEach{ merged[it.id]=it}
             repo.saveFullList(GitHubRepository.SURPRISES_FILE, json.encodeToString(merged.values.toList()))
-        }catch(_:Exception){}
+        }catch(e:Exception){ Result.failure(e) }
     }
 }

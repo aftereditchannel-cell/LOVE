@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.ExpenseDao
 import com.coupleos.app.data.local.entity.ExpenseEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -44,19 +45,26 @@ class ExpenseViewModel @Inject constructor(
         viewModelScope.launch{
             val now=LocalDateTime.now().toString()
             dao.insert(ExpenseEntity(id=crypto.generateId(), amount=amount, category=category, paidBy=storage.getUserId()?:"", date=java.time.LocalDate.now().toString(), note=note, createdBy=storage.getUserId()?:"", createdAt=now))
-            sync()
-            _ui.update{ it.copy(feedback="هزینه ثبت و روی توکن ذخیره شد 💰")}
+            val r = sync()
+            _ui.update{ it.copy(feedback = if(r.isSuccess) TokenOwnership.saved("هزینه") else TokenOwnership.failed(r.exceptionOrNull()))}
         }
     }
-    fun delete(id:String){ viewModelScope.launch{ dao.delete(id); repo.removeFromList(GitHubRepository.EXPENSES_FILE, id); sync() }}
-    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="همگام شد ✅")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
-    private suspend fun sync(){
-        try{
+    fun isReadOnly(id:String) = repo.isReadOnly(GitHubRepository.EXPENSES_FILE, id)
+    fun delete(id:String){ viewModelScope.launch{
+        if(isReadOnly(id)){ _ui.update{ it.copy(feedback=TokenOwnership.READ_ONLY)}; return@launch }
+        dao.delete(id)
+        val r = repo.removeFromList(GitHubRepository.EXPENSES_FILE, id)
+        sync()
+        _ui.update{ it.copy(feedback = if(r.isSuccess) "حذف شد و از توکن خودت پاک شد ✅" else TokenOwnership.failed(r.exceptionOrNull()))}
+    }}
+    fun refresh(){ viewModelScope.launch{ _ui.update{ it.copy(refreshing=true)}; pull(); sync(); _ui.update{ it.copy(refreshing=false, feedback="بازخوانی شد ✅ — دیتای پارتنر از توکن خودش خونده شد 👁️")}; kotlinx.coroutines.delay(2000); _ui.update{ it.copy(feedback=null)} } }
+    private suspend fun sync(): Result<Unit> {
+        return try{
             val remoteStr=repo.readMergedContent(GitHubRepository.EXPENSES_FILE).getOrNull()?:"[]"
             val remote=try{ json.decodeFromString<List<ExpenseSyncData>>(remoteStr)}catch(_:Exception){ emptyList()}
             val local=expenses.value.map{ ExpenseSyncData(it.id,it.amount,it.category,it.paidBy,it.date,it.note,it.createdAt)}
             val merged=mutableMapOf<String, ExpenseSyncData>(); remote.forEach{ merged[it.id]=it}; local.forEach{ merged[it.id]=it}
             repo.saveFullList(GitHubRepository.EXPENSES_FILE, json.encodeToString(merged.values.toList()))
-        }catch(_:Exception){}
+        }catch(e:Exception){ Result.failure(e) }
     }
 }

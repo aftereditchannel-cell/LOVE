@@ -143,6 +143,28 @@ class SecureStorage @Inject constructor(
     fun setGistSyncEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_GIST_SYNC_ENABLED, enabled).apply()
     fun isGistSyncEnabled(): Boolean = prefs.getBoolean(KEY_GIST_SYNC_ENABLED, true)
 
+    // ── Ownership registry ──────────────────────────────────
+    /**
+     * Ids of items that came from the PARTNER's token for a given data file.
+     * Those items are read-only on this device: they must never be written back
+     * to my gist, edited or deleted from here.
+     */
+    fun savePartnerOwnedIds(fileName: String, ids: Set<String>) =
+        prefs.edit().putStringSet("partner_ids_$fileName", ids).apply()
+
+    fun getPartnerOwnedIds(fileName: String): Set<String> =
+        prefs.getStringSet("partner_ids_$fileName", emptySet()) ?: emptySet()
+
+    fun addPartnerOwnedIds(fileName: String, ids: Set<String>) {
+        if (ids.isEmpty()) return
+        val merged = getPartnerOwnedIds(fileName).toMutableSet()
+        merged.addAll(ids)
+        savePartnerOwnedIds(fileName, merged)
+    }
+
+    fun isPartnerOwned(fileName: String, id: String): Boolean =
+        getPartnerOwnedIds(fileName).contains(id)
+
     // ── Masked tokens ───────────────────────────────────────
     fun getMaskedPersonalToken(): String {
         val token = getPersonalToken() ?: return ""

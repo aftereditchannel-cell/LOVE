@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.MoodDao
 import com.coupleos.app.data.local.entity.MoodEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -196,7 +197,7 @@ class MoodViewModel @Inject constructor(
                         it.copy(
                             isSaving = false,
                             saved = true,
-                            feedbackMessage = "ثبت شد و روی توکن ذخیره شد ✅",
+                            feedbackMessage = TokenOwnership.saved("حال امروزت"),
                         )
                     }
                 } else {
@@ -204,7 +205,7 @@ class MoodViewModel @Inject constructor(
                         it.copy(
                             isSaving = false,
                             saved = true,
-                            feedbackMessage = "ثبت شد (لوکال) — خطا در ذخیره روی توکن: ${result.exceptionOrNull()?.message}",
+                            feedbackMessage = TokenOwnership.failed(result.exceptionOrNull()),
                         )
                     }
                 }
@@ -213,7 +214,7 @@ class MoodViewModel @Inject constructor(
                     it.copy(
                         isSaving = false,
                         saved = true,
-                        feedbackMessage = "ثبت شد (لوکال) — اتصال توکن برقرار نیست: ${e.localizedMessage}",
+                        feedbackMessage = TokenOwnership.failed(e),
                     )
                 }
             }

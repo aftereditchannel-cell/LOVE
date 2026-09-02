@@ -2,7 +2,13 @@ package com.coupleos.app.data.local
 
 import android.content.Context
 import android.util.Base64
+import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.serialization.Serializable
@@ -100,11 +106,25 @@ data class ExtraBundle(
 @Singleton
 class ExtraStore @Inject constructor(
     @ApplicationContext context: Context,
+    private val gitHubRepository: GitHubRepository,
 ) {
     private val prefs = context.getSharedPreferences("couple_os_extra", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /** MY data — the only thing that is ever written to MY token. */
     private val _bundle = MutableStateFlow(read())
     val bundle: StateFlow<ExtraBundle> = _bundle
+
+    /** PARTNER data — pulled from the partner token, strictly read-only. */
+    private val _partnerBundle = MutableStateFlow(ExtraBundle())
+    val partnerBundle: StateFlow<ExtraBundle> = _partnerBundle
+
+    /** Last write status shown to the user: ثبت شد / ثبت نشد + کد خطا. */
+    private val _syncStatus = MutableStateFlow<String?>(null)
+    val syncStatus: StateFlow<String?> = _syncStatus
+
+    init { refreshFromTokens() }
 
     private fun read(): ExtraBundle {
         val raw = prefs.getString("bundle", null) ?: return ExtraBundle()
@@ -114,7 +134,51 @@ class ExtraStore @Inject constructor(
     private fun persist(next: ExtraBundle) {
         prefs.edit().putString("bundle", json.encodeToString(ExtraBundle.serializer(), next)).apply()
         _bundle.value = next
+        push(next)
     }
+
+    private var pushJob: kotlinx.coroutines.Job? = null
+
+    /**
+     * Register MY extras on MY token, reporting success/failure to the UI.
+     * Debounced so rapid game taps do not spam the GitHub API.
+     */
+    private fun push(next: ExtraBundle) {
+        pushJob?.cancel()
+        pushJob = scope.launch {
+            kotlinx.coroutines.delay(1200)
+            val result = gitHubRepository.saveObject(
+                GitHubRepository.EXTRAS_FILE,
+                json.encodeToString(ExtraBundle.serializer(), next)
+            )
+            _syncStatus.value = if (result.isSuccess) TokenOwnership.saved("تغییرات")
+                                else TokenOwnership.failed(result.exceptionOrNull())
+        }
+    }
+
+    /** Pull MY bundle back from my token and the partner's bundle (read-only). */
+    fun refreshFromTokens() {
+        scope.launch {
+            try {
+                val mine = gitHubRepository.readMyContent(GitHubRepository.EXTRAS_FILE).getOrNull()
+                if (!mine.isNullOrBlank() && mine != "{}") {
+                    val remote = try { json.decodeFromString(ExtraBundle.serializer(), mine) } catch (_: Exception) { null }
+                    if (remote != null && _bundle.value == ExtraBundle()) {
+                        prefs.edit().putString("bundle", mine).apply()
+                        _bundle.value = remote
+                    }
+                }
+            } catch (_: Exception) {}
+            try {
+                val theirs = gitHubRepository.readPartnerContent(GitHubRepository.EXTRAS_FILE).getOrNull()
+                if (!theirs.isNullOrBlank() && theirs != "{}") {
+                    _partnerBundle.value = try { json.decodeFromString(ExtraBundle.serializer(), theirs) } catch (_: Exception) { ExtraBundle() }
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
+    fun clearStatus() { _syncStatus.value = null }
 
     fun addNote(text: String, color: String = "rose") {
         val n = StickyNote(UUID.randomUUID().toString(), text, color, LocalDate.now().toString())

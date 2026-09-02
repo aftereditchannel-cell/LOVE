@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.coupleos.app.data.local.dao.MemoryDao
 import com.coupleos.app.data.local.entity.MemoryEntity
 import com.coupleos.app.data.repository.GitHubRepository
+import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -98,13 +99,16 @@ class MemoriesViewModel @Inject constructor(
                 isSynced = false,
             )
             memoryDao.insert(memory)
-            syncMemoriesToGist()
-            _uiState.update { it.copy(feedbackMessage = "خاطره ثبت شد و روی توکن ذخیره شد ❤️") }
+            val r = syncMemoriesToGist()
+            _uiState.update { it.copy(feedbackMessage = if (r.isSuccess) TokenOwnership.saved("خاطره") else TokenOwnership.failed(r.exceptionOrNull())) }
         }
     }
 
+    fun isReadOnly(id: String) = gitHubRepository.isReadOnly(GitHubRepository.MEMORIES_FILE, id)
+
     fun toggleFavorite(memory: MemoryEntity) {
         viewModelScope.launch {
+            if (isReadOnly(memory.id)) { _uiState.update { it.copy(feedbackMessage = TokenOwnership.READ_ONLY) }; return@launch }
             val updated = memory.copy(
                 isFavorite = !memory.isFavorite,
                 updatedAt = LocalDateTime.now().toString(),
@@ -117,9 +121,11 @@ class MemoriesViewModel @Inject constructor(
 
     fun deleteMemory(memory: MemoryEntity) {
         viewModelScope.launch {
+            if (isReadOnly(memory.id)) { _uiState.update { it.copy(feedbackMessage = TokenOwnership.READ_ONLY) }; return@launch }
             memoryDao.softDelete(memory.id, LocalDateTime.now().toString())
-            gitHubRepository.removeFromList(GitHubRepository.MEMORIES_FILE, memory.id)
+            val r = gitHubRepository.removeFromList(GitHubRepository.MEMORIES_FILE, memory.id)
             syncMemoriesToGist()
+            _uiState.update { it.copy(feedbackMessage = if (r.isSuccess) "حذف شد و از توکن خودت پاک شد ✅" else TokenOwnership.failed(r.exceptionOrNull())) }
         }
     }
 
@@ -129,15 +135,15 @@ class MemoriesViewModel @Inject constructor(
             try {
                 pullFromGist()
                 syncMemoriesToGist()
-                _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "دریافت از توکن انجام شد ✅") }
+                _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "بازخوانی شد ✅ — خاطرات پارتنر از توکن خودش خونده شد 👁️") }
             } catch (e: Exception) {
                 _uiState.update { it.copy(isRefreshing = false, feedbackMessage = "خطا: ${e.message}") }
             }
         }
     }
 
-    private suspend fun syncMemoriesToGist() {
-        try {
+    private suspend fun syncMemoriesToGist(): Result<Unit> {
+        return try {
             // Merge local + remote to avoid overwriting partner's memories
             val remoteStr = gitHubRepository.readMergedContent(GitHubRepository.MEMORIES_FILE).getOrNull() ?: "[]"
             val remoteList = try { json.decodeFromString<List<MemorySyncData>>(remoteStr) } catch (_: Exception) { emptyList() }
@@ -148,12 +154,8 @@ class MemoriesViewModel @Inject constructor(
             remoteList.forEach { mergedMap[it.id] = it }
             localList.forEach { mergedMap[it.id] = it }
             val finalJson = json.encodeToString(mergedMap.values.toList())
-            val result = gitHubRepository.saveFullList(GitHubRepository.MEMORIES_FILE, finalJson)
-            if (result.isSuccess) {
-                // mark all synced
-                localList.forEach { /* optional mark */ }
-            }
-        } catch (_: Exception) { /* will sync later */ }
+            gitHubRepository.saveFullList(GitHubRepository.MEMORIES_FILE, finalJson)
+        } catch (e: Exception) { Result.failure(e) }
     }
 
     fun clearFeedback() {

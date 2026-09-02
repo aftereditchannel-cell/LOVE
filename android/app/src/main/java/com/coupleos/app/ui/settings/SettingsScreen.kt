@@ -51,7 +51,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch{
             _ui.update{ it.copy(checking=true)}
             val status = repo.checkConnection()
-            _ui.update{ it.copy(checking=false, myConnected=status.myConnected, partnerConnected=status.partnerConnected, feedback= status.error ?: "هر دو توکن متصل ✅ — دیتا روی توکن ثبت میشه")}
+            _ui.update{ it.copy(checking=false, myConnected=status.myConnected, partnerConnected=status.partnerConnected, feedback= status.error ?: "هر دو توکن متصل ✅ — ثبت روی توکن خودت، بازخوانی از توکن پارتنر")}
         }
     }
     fun toggleGistSync(enabled:Boolean){
@@ -88,7 +88,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), onBack:()->Unit = {}
                     Button(onClick={ vm.checkConnection()}, modifier=Modifier.fillMaxWidth(), colors=ButtonDefaults.buttonColors(containerColor=com.coupleos.app.ui.theme.Primary), enabled=!ui.checking){
                         if(ui.checking) CircularProgressIndicator(Modifier.size(18.dp), color=com.coupleos.app.ui.theme.OnPrimary, strokeWidth=2.dp) else Text("بررسی اتصال توکن‌ها")
                     }
-                    Text("اتصال تایید شه ولی دیتا روی توکن ذخیره میشه — این دکمه هم اتصال و هم خواندن/نوشتن Gist رو تست می‌کنه", style=MaterialTheme.typography.labelSmall, color=com.coupleos.app.ui.theme.TextTertiary)
+                    Text("قانون اپ: هر چیزی که ثبت می‌کنی فقط روی «توکن خودت» نوشته می‌شه ✍️ و از «توکن پارتنر» فقط می‌خونی 👁️ — هیچ‌وقت روی توکن پارتنر چیزی نوشته نمی‌شه.", style=MaterialTheme.typography.labelSmall, color=com.coupleos.app.ui.theme.TextTertiary)
                 }
             }
             Card(Modifier.fillMaxWidth(), colors=CardDefaults.cardColors(containerColor=com.coupleos.app.ui.theme.Surface), shape=RoundedCornerShape(16.dp)){
@@ -108,7 +108,7 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), onBack:()->Unit = {}
                 Row(Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement=Arrangement.SpaceBetween, verticalAlignment=Alignment.CenterVertically){
                     Column(Modifier.weight(1f)){
                         Text("همگام سازی روی توکن (Gist)", style=MaterialTheme.typography.titleSmall, color=com.coupleos.app.ui.theme.TextPrimary)
-                        Text("هر تغییری فوراً روی هر دو توکن ذخیره و از توکن خونده میشه", style=MaterialTheme.typography.labelSmall, color=com.coupleos.app.ui.theme.TextTertiary)
+                        Text("نوشتن: فقط توکن خودت ✍️ · خواندن: توکن خودت + توکن پارتنر 👁️", style=MaterialTheme.typography.labelSmall, color=com.coupleos.app.ui.theme.TextTertiary)
                     }
                     Switch(checked=ui.gistSyncEnabled, onCheckedChange={ vm.toggleGistSync(it)})
                 }
@@ -117,8 +117,9 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel(), onBack:()->Unit = {}
                 Column(Modifier.padding(16.dp), verticalArrangement=Arrangement.spacedBy(8.dp)){
                     Text("ذخیره‌سازی", style=MaterialTheme.typography.titleSmall, color=com.coupleos.app.ui.theme.Primary)
                     Text("• تمام داده‌ها اول در دیتابیس لوکال (Room) ذخیره میشن → آفلاین هم کار می‌کنه", style=MaterialTheme.typography.bodySmall, color=com.coupleos.app.ui.theme.TextSecondary)
-                    Text("• بعد روی GitHub Gist هر دو توکن (ghp_...) به صورت JSON ذخیره میشن", style=MaterialTheme.typography.bodySmall, color=com.coupleos.app.ui.theme.TextSecondary)
-                    Text("• هنگام ورود، از Gist خونده و با لوکال ادغام میشه — هیچ دیتایی گم نمیشه", style=MaterialTheme.typography.bodySmall, color=com.coupleos.app.ui.theme.TextSecondary)
+                    Text("• بعد فقط روی Gist خصوصی «توکن خودت» (ghp_...) به صورت JSON ثبت میشن ✍️", style=MaterialTheme.typography.bodySmall, color=com.coupleos.app.ui.theme.TextSecondary)
+                    Text("• دیتای پارتنر از Gist «توکن پارتنر» فقط خونده میشه 👁️ — قابل ویرایش یا حذف نیست", style=MaterialTheme.typography.bodySmall, color=com.coupleos.app.ui.theme.TextSecondary)
+                    Text("• بعد از هر ثبت، نتیجه واقعی (ثبت شد ✅ یا ثبت نشد + کد خطا) نمایش داده میشه", style=MaterialTheme.typography.bodySmall, color=com.coupleos.app.ui.theme.TextSecondary)
                     Text("• بک‌آپ اضافی روی سرور (اگر DATABASE_URL تنظیم باشه)", style=MaterialTheme.typography.bodySmall, color=com.coupleos.app.ui.theme.TextSecondary)
                 }
             }

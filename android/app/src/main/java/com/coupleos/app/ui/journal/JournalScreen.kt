@@ -91,7 +91,8 @@ fun JournalScreen(
                                 Spacer(Modifier.height(8.dp))
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                     Text(entry.date, style = MaterialTheme.typography.labelSmall, color = TextTertiary)
-                                    TextButton(onClick = { viewModel.deleteEntry(entry.id) }) { Text("حذف", color = Danger) }
+                                    if (viewModel.isReadOnly(entry.id)) Text("از توکن پارتنر 👁️ فقط خواندنی", style = MaterialTheme.typography.labelSmall, color = TextTertiary)
+                                    else TextButton(onClick = { viewModel.deleteEntry(entry.id) }) { Text("حذف", color = Danger) }
                                 }
                             }
                         }
