@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Base64
 import com.coupleos.app.data.repository.GitHubRepository
 import com.coupleos.app.data.repository.TokenOwnership
+import com.coupleos.app.sync.RealtimeChannel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -107,6 +108,7 @@ data class ExtraBundle(
 class ExtraStore @Inject constructor(
     @ApplicationContext context: Context,
     private val gitHubRepository: GitHubRepository,
+    private val realtime: RealtimeChannel,
 ) {
     private val prefs = context.getSharedPreferences("couple_os_extra", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
@@ -124,7 +126,34 @@ class ExtraStore @Inject constructor(
     private val _syncStatus = MutableStateFlow<String?>(null)
     val syncStatus: StateFlow<String?> = _syncStatus
 
-    init { refreshFromTokens() }
+    /** true while the live game/extras channel is connected. */
+    val live: StateFlow<Boolean> get() = realtime.live
+
+    init {
+        refreshFromTokens()
+        startRealtime()
+    }
+
+    /**
+     * Real-time games: keep listening to the partner's extras.json so their moves,
+     * scores and notes land on this screen within a few seconds — no manual refresh.
+     */
+    private fun startRealtime() {
+        realtime.subscribe(GitHubRepository.EXTRAS_FILE)
+        scope.launch {
+            realtime.stream(GitHubRepository.EXTRAS_FILE).collect { snapshot ->
+                if (snapshot == null) return@collect
+                // Only the partner side is applied here: my own bundle is the local source of truth.
+                if (!snapshot.fromPartnerChanged) return@collect
+                val theirs = gitHubRepository.readPartnerContent(GitHubRepository.EXTRAS_FILE).getOrNull()
+                if (!theirs.isNullOrBlank() && theirs != "{}") {
+                    _partnerBundle.value = try {
+                        json.decodeFromString(ExtraBundle.serializer(), theirs)
+                    } catch (_: Exception) { _partnerBundle.value }
+                }
+            }
+        }
+    }
 
     private fun read(): ExtraBundle {
         val raw = prefs.getString("bundle", null) ?: return ExtraBundle()
@@ -141,18 +170,20 @@ class ExtraStore @Inject constructor(
 
     /**
      * Register MY extras on MY token, reporting success/failure to the UI.
-     * Debounced so rapid game taps do not spam the GitHub API.
+     * Short debounce (500ms) keeps game moves feeling real-time while still
+     * collapsing bursts of rapid taps into a single request.
      */
     private fun push(next: ExtraBundle) {
         pushJob?.cancel()
         pushJob = scope.launch {
-            kotlinx.coroutines.delay(1200)
+            kotlinx.coroutines.delay(500)
             val result = gitHubRepository.saveObject(
                 GitHubRepository.EXTRAS_FILE,
                 json.encodeToString(ExtraBundle.serializer(), next)
             )
             _syncStatus.value = if (result.isSuccess) TokenOwnership.saved("تغییرات")
                                 else TokenOwnership.failed(result.exceptionOrNull())
+            if (result.isSuccess) realtime.poke(GitHubRepository.EXTRAS_FILE)
         }
     }
 

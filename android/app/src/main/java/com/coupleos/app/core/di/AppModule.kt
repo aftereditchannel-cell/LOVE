@@ -34,7 +34,11 @@ object AppModule {
             CoupleOSDatabase::class.java,
             "couple_os_database"
         )
-            .fallbackToDestructiveMigration()
+            // IMPORTANT: never use fallbackToDestructiveMigration() here.
+            // It deletes the whole database whenever the schema version changes,
+            // which would wipe the user's data on every app update.
+            // Register real migrations in CoupleOSDatabase.MIGRATIONS instead.
+            .addMigrations(*CoupleOSDatabase.MIGRATIONS)
             .build()
     }
 

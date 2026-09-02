@@ -55,6 +55,12 @@ fun ChatScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = Primary,
                     )
+                } else {
+                    Text(
+                        text = if (uiState.isLive) "🟢 آنلاین — پیام‌ها زنده میان" else "⚪ در حال اتصال…",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (uiState.isLive) Success else TextTertiary,
+                    )
                 }
             }
         }

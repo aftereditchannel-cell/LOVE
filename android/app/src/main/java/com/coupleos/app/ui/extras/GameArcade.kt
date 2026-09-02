@@ -52,6 +52,7 @@ fun GameArcadeScreen(vm: ExtraViewModel = hiltViewModel()) {
     val bundle by vm.extra.bundle.collectAsState()
     val partner by vm.extra.partnerBundle.collectAsState()
     val status by vm.extra.syncStatus.collectAsState()
+    val live by vm.extra.live.collectAsState()
     var tab by remember { mutableStateOf(Arcade.Hub) }
     val title = when (tab) {
         Arcade.Hub -> "اتاق بازی 🎮"
@@ -75,7 +76,7 @@ fun GameArcadeScreen(vm: ExtraViewModel = hiltViewModel()) {
         },
     ) { pad ->
         when (tab) {
-            Arcade.Hub -> HubPane(bundle.play, partner.play, status, vm.extra, { tab = it }, Modifier.padding(pad))
+            Arcade.Hub -> HubPane(bundle.play, partner.play, status, live, vm.extra, { tab = it }, Modifier.padding(pad))
             Arcade.Memory -> MemoryPane(vm.extra, Modifier.padding(pad))
             Arcade.Catch -> CatchPane(vm.extra, Modifier.padding(pad))
             Arcade.Ttt -> TttPane(vm.extra, Modifier.padding(pad))
@@ -91,6 +92,7 @@ private fun HubPane(
     play: com.coupleos.app.data.local.GamePlay,
     partnerPlay: com.coupleos.app.data.local.GamePlay,
     status: String?,
+    live: Boolean,
     extra: ExtraStore,
     go: (Arcade) -> Unit,
     modifier: Modifier,
@@ -99,6 +101,11 @@ private fun HubPane(
     var toast by remember { mutableStateOf("") }
     Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         TokenStatusBar(status)
+        Text(
+            if (live) "🟢 اتاق زنده‌ست — حرکت‌های پارتنر خودکار میاد" else "⚪ در حال اتصال به اتاق…",
+            color = if (live) Success else TextTertiary,
+            style = MaterialTheme.typography.labelSmall,
+        )
         Card(colors = CardDefaults.cardColors(containerColor = Surface), shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text("امتیاز دونفره", color = TextTertiary, style = MaterialTheme.typography.labelSmall)
