@@ -17,8 +17,8 @@ android {
         applicationId = "com.coupleos.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -50,8 +50,10 @@ android {
     buildTypes {
         debug {
             isDebuggable = true
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
+            // NOTE: no applicationIdSuffix / versionNameSuffix.
+            // The package id must stay identical across releases so a newly
+            // downloaded APK upgrades the installed app in place and keeps its data,
+            // instead of being treated as a separate app.
         }
         release {
             isMinifyEnabled = true

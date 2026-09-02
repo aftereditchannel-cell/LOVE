@@ -7,6 +7,7 @@ import com.coupleos.app.data.local.entity.MessageEntity
 import com.coupleos.app.data.repository.GitHubRepository
 import com.coupleos.app.data.repository.TokenOwnership
 import com.coupleos.app.security.crypto.CryptoManager
+import com.coupleos.app.sync.RealtimeChannel
 import com.coupleos.app.security.keystore.SecureStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
@@ -25,6 +26,8 @@ data class ChatUiState(
     val isLoading: Boolean = false,
     val feedbackMessage: String? = null,
     val isRefreshing: Boolean = false,
+    /** true while the live channel is connected — shown as «آنلاین» in the header. */
+    val isLive: Boolean = false,
 )
 
 @Serializable
@@ -43,6 +46,7 @@ class ChatViewModel @Inject constructor(
     private val secureStorage: SecureStorage,
     private val cryptoManager: CryptoManager,
     private val gitHubRepository: GitHubRepository,
+    private val realtime: RealtimeChannel,
     private val json: Json,
 ) : ViewModel() {
 
@@ -58,6 +62,49 @@ class ChatViewModel @Inject constructor(
 
     init {
         pullFromGist()
+        startRealtime()
+    }
+
+    /**
+     * Real-time messaging: subscribe to the live channel for messages.json.
+     * Every new payload coming from the partner's token is applied to Room
+     * immediately, so the chat updates without pulling to refresh.
+     */
+    private fun startRealtime() {
+        realtime.subscribe(GitHubRepository.MESSAGES_FILE)
+        viewModelScope.launch {
+            realtime.live.collect { live -> _uiState.update { it.copy(isLive = live) } }
+        }
+        viewModelScope.launch {
+            realtime.stream(GitHubRepository.MESSAGES_FILE).collect { snapshot ->
+                if (snapshot == null) return@collect
+                applyRemote(snapshot.json)
+            }
+        }
+    }
+
+    private suspend fun applyRemote(remote: String) {
+        if (remote.isBlank() || remote == "[]") return
+        val list = try { json.decodeFromString<List<MessageSyncData>>(remote) } catch (_: Exception) { return }
+        for (item in list) {
+            if (messageDao.getMessageById(item.id) == null) {
+                messageDao.insert(MessageEntity(
+                    id = item.id,
+                    coupleId = secureStorage.getCoupleId() ?: item.coupleId,
+                    senderId = item.senderId,
+                    content = item.content,
+                    type = item.type,
+                    createdAt = item.createdAt,
+                    updatedAt = item.createdAt,
+                    isSynced = true,
+                ))
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        realtime.unsubscribe(GitHubRepository.MESSAGES_FILE)
     }
 
     private fun pullFromGist() {
@@ -114,6 +161,7 @@ class ChatViewModel @Inject constructor(
 
             // Register on MY token only
             val r = syncToGist()
+            realtime.poke(GitHubRepository.MESSAGES_FILE)
             _uiState.update { it.copy(feedbackMessage = if (r.isSuccess) "پیام روی توکن خودت ثبت شد ✅" else TokenOwnership.failed(r.exceptionOrNull())) }
         }
     }

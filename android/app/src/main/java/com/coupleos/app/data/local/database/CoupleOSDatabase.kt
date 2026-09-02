@@ -2,6 +2,8 @@ package com.coupleos.app.data.local.database
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.coupleos.app.data.local.dao.*
 import com.coupleos.app.data.local.entity.*
 
@@ -48,4 +50,24 @@ abstract class CoupleOSDatabase : RoomDatabase() {
     abstract fun timelineDao(): TimelineDao
     abstract fun dailyQuestionDao(): DailyQuestionDao
     abstract fun syncQueueDao(): SyncQueueDao
+
+    companion object {
+        /**
+         * Schema migrations.
+         *
+         * Every future schema change MUST add a Migration here and bump `version`,
+         * so installing a new APK over an old one upgrades the database in place
+         * and the user keeps all of their existing data.
+         *
+         * Destructive fallback is deliberately NOT enabled.
+         */
+        val MIGRATIONS: Array<Migration> = arrayOf(
+            // Example for the next schema change:
+            // object : Migration(1, 2) {
+            //     override fun migrate(db: SupportSQLiteDatabase) {
+            //         db.execSQL("ALTER TABLE moods ADD COLUMN newField TEXT NOT NULL DEFAULT ''")
+            //     }
+            // },
+        )
+    }
 }
